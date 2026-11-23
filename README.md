@@ -15,7 +15,8 @@ cd closetune
 ```
 
 Al primo avvio crea `.venv` con le dipendenze, poi apre il sito su http://127.0.0.1:8765/.
-Il server resta acceso in background: `./closetune stop` lo spegne.
+Il server resta acceso in background e si spegne da solo dopo 15 minuti senza richieste
+(`INATTIVO_MIN` in `strumenti/server.py`); `./closetune stop` lo spegne subito.
 Per lanciarlo da qualsiasi cartella scrivendo solo `closetune`:
 
 ```sh
