@@ -329,3 +329,15 @@ test("senza pelle nel profilo: niente voto pelle, outfit del giorno funziona", (
     assert.ok(m.delGiorno(capi, new Date(2026, 10, 23)).scelto);
   } finally { m.impostaPelle("#ddb095"); }
 });
+
+test("i capi da casa non entrano negli abbinamenti", () => {
+  const capi = m.prepara([
+    capo("1", "maglione", "#6b2a34"), capo("2", "t-shirt", "#f1f1ed"), capo("3", "jeans", "#2c3e5c"),
+    capo("4", "pile", "#3b5772", { stato: "casa" }), capo("5", "felpa", "#5f5e3a"),
+  ]);
+  const ids = m.outfit(capi[1], capi).outfit.flatMap((o) => o.pezzi.map((p) => p.id));
+  assert.ok(ids.includes("1") && !ids.includes("4"));
+  assert.deepEqual(m.outfit(capi[3], capi), { outfit: [], mancanti: [] });
+  assert.deepEqual(m.filtra(capi, { stato: "casa" }).map((c) => c.id), ["4"]);
+  assert.ok(!m.filtra(capi, { stato: "attivo" }).some((c) => c.id === "4"));
+});
