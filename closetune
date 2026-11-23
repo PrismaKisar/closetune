@@ -1,11 +1,16 @@
 #!/bin/sh
-# closetune: avvia il server (se non gira già) e apre il sito nel browser.
+# closetune: avvia il server (se non gira già) e apre il sito nel browser. `closetune stop` lo spegne.
 # Al primo avvio crea .venv con le dipendenze. Porta: CLOSETUNE_PORT (default 8765).
 set -e
 DIR="$(cd "$(dirname "$(readlink -f "$0")")" && pwd)"
 PORT="${CLOSETUNE_PORT:-8765}"
 URL="http://127.0.0.1:$PORT/"
 cd "$DIR"
+if [ "$1" = stop ]; then
+  PID="$(lsof -ti "tcp:$PORT" -sTCP:LISTEN || true)"
+  if [ -n "$PID" ]; then kill $PID && echo "closetune spento"; else echo "closetune non è acceso"; fi
+  exit 0
+fi
 if [ ! -x .venv/bin/python ]; then
   echo "Primo avvio: installo le dipendenze in .venv..."
   python3 -m venv .venv

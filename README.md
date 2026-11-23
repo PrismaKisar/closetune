@@ -15,6 +15,7 @@ cd closetune
 ```
 
 Al primo avvio crea `.venv` con le dipendenze, poi apre il sito su http://127.0.0.1:8765/.
+Il server resta acceso in background: `./closetune stop` lo spegne.
 Per lanciarlo da qualsiasi cartella scrivendo solo `closetune`:
 
 ```sh
