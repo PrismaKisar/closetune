@@ -5,6 +5,8 @@ import json
 import posixpath
 import re
 import sys
+import threading
+import time
 from functools import partial
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -12,6 +14,7 @@ from urllib.parse import unquote
 
 ROOT = Path(__file__).resolve().parent.parent
 DATI = ROOT / "dati"  # dati personali, fuori dal repo
+INATTIVO_MIN = 15  # senza richieste per tanto il server si spegne da solo; `closetune` lo riaccende
 
 # Hex stimati dal nome colore, solo per i capi senza `hex` misurato (frase più lunga prima).
 NOMI_HEX = {
@@ -116,7 +119,10 @@ def imposta_stato(id_capo, stato, root=DATI):
 class Handler(SimpleHTTPRequestHandler):
     root = DATI  # i test lo puntano su una cartella temporanea
 
+    ultima = time.monotonic()  # ultima risposta servita, per lo spegnimento automatico
+
     def end_headers(self):
+        Handler.ultima = time.monotonic()
         # foto e codice cambiano spesso: il browser rivalida sempre (304 se il file non è cambiato)
         if not self.path.startswith("/api/"):
             self.send_header("Cache-Control", "no-cache")
@@ -162,10 +168,23 @@ class Handler(SimpleHTTPRequestHandler):
         self.end_headers()
 
 
+def spegni_se_inattivo(srv, secondi, ogni=30):
+    """Thread di guardia: spegne il server quando non risponde a richieste da `secondi`."""
+    def guardia():
+        while time.monotonic() - Handler.ultima < secondi:
+            time.sleep(ogni)
+        srv.shutdown()
+    t = threading.Thread(target=guardia, daemon=True)
+    t.start()
+    return t
+
+
 if __name__ == "__main__":
     porta = int(sys.argv[1]) if len(sys.argv) > 1 else 8000
     import foto_web  # versioni web mancanti o più vecchie dell'originale
     foto_web.main([])
     srv = ThreadingHTTPServer(("127.0.0.1", porta), partial(Handler, directory=str(ROOT)))
-    print(f"closetune su http://127.0.0.1:{porta}")
+    print(f"closetune su http://127.0.0.1:{porta}, si spegne dopo {INATTIVO_MIN} minuti senza richieste")
+    Handler.ultima = time.monotonic()
+    spegni_se_inattivo(srv, INATTIVO_MIN * 60)
     srv.serve_forever()
