@@ -93,7 +93,7 @@ def carica(root=DATI):
     return {"capi": capi, "outfit": outfit, "profilo": {"pelle": (profilo or {}).get("pelle")}}
 
 
-STATI = ("attivo", "dismesso")
+STATI = ("attivo", "dismesso", "casa")
 
 
 def imposta_stato(id_capo, stato, root=DATI):

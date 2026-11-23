@@ -52,7 +52,7 @@ modello: slim fit
 materiale: cotone
 stagione: [primavera, autunno]
 occasione: [casual, smart-casual]
-stato: attivo             # attivo | dismesso
+stato: attivo             # attivo | casa | dismesso
 foto: foto/001.webp       # riferimento alla foto compressa, se disponibile
 ---
 Note libere (pattern particolari, dettagli non catalogabili sopra).
@@ -72,3 +72,4 @@ Naming file: `capi/NNN-descrizione-breve.md`, NNN = id progressivo a 3 cifre.
 - Aggiungere una combinazione a `outfit.md` solo dopo approvazione esplicita dell'utente (es. "va bene", "confermo"), non per abbinamenti solo proposti.
 - Le note libere nei file `capi/` restano descrittive del capo (pattern, dettagli non catalogabili): non scriverci consigli di abbinamento, che vivono solo in `outfit.md`.
 - Quando un capo non viene più usato, impostare `stato: dismesso` invece di cancellare il file (mantiene lo storico).
+- `stato: casa` = capo usato solo in casa (es. pile, tuta): resta censito ma non entra mai negli abbinamenti né nell'outfit del giorno.

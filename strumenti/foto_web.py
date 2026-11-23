@@ -41,8 +41,9 @@ def sagoma(rgb):
     capo = ndi.binary_opening(capo, structure=disco)
     capo = ndi.binary_erosion(capo, iterations=2)  # via l'alone chiaro lasciato dal ritaglio
     lab, n = ndi.label(capo)
-    if n > 1:  # solo il pezzo grande: niente briciole di compressione
-        capo = lab == (np.argmax(ndi.sum(capo, lab, range(1, n + 1))) + 1)
+    if n > 1:  # via le briciole di compressione, ma restano i pezzi grandi (le due scarpe di un paio)
+        aree = ndi.sum(capo, lab, range(1, n + 1))
+        capo = np.isin(lab, 1 + np.flatnonzero(aree >= 0.2 * aree.max()))
     return capo
 
 

@@ -251,6 +251,9 @@ export const NOMI_SLOT = { base: "t-shirt, polo o camicia", mid: "felpa, pile o 
 /** Gli outfit attorno al capo scelto, presi da `pool` (già filtrato per stato): tutte le combinazioni
  * dei `perSlot` capi migliori per ruolo, dal migliore in giù, alternando i pezzi per non ripetersi. */
 export function outfit(scelto, pool, { n = Infinity, approvati = [], perSlot = 6 } = {}) {
+  // i capi da casa (stato: casa) sono censiti ma non entrano mai negli abbinamenti
+  if (scelto.stato === "casa") return { outfit: [], mancanti: [] };
+  pool = pool.filter((c) => c.stato !== "casa");
   const servono = ["base", "mid", "bottom", "shoes", "belt"].filter((s) => s !== scelto.slot);
   const candidati = {};
   const mancanti = [];
