@@ -1,0 +1,22 @@
+#!/bin/sh
+# closetune: avvia il server (se non gira già) e apre il sito nel browser.
+# Al primo avvio crea .venv con le dipendenze. Porta: CLOSETUNE_PORT (default 8765).
+set -e
+DIR="$(cd "$(dirname "$(readlink -f "$0")")" && pwd)"
+PORT="${CLOSETUNE_PORT:-8765}"
+URL="http://127.0.0.1:$PORT/"
+cd "$DIR"
+if [ ! -x .venv/bin/python ]; then
+  echo "Primo avvio: installo le dipendenze in .venv..."
+  python3 -m venv .venv
+  .venv/bin/pip install -q -r requirements.txt
+fi
+if ! curl -fs -o /dev/null "$URL"; then
+  nohup .venv/bin/python tools/web.py "$PORT" > .closetune.log 2>&1 &
+  i=0; until curl -fs -o /dev/null "$URL"; do
+    i=$((i + 1)); [ $i -gt 100 ] && { echo "Il server non parte, vedi $DIR/.closetune.log"; exit 1; }
+    sleep 0.2
+  done
+fi
+echo "closetune su $URL"
+case "$(uname)" in Darwin) open "$URL" ;; *) xdg-open "$URL" >/dev/null 2>&1 || true ;; esac

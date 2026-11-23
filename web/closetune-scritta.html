@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Closetune · Scritta</title>
+  <meta name="description" content="Come far leggere closet e tune nella stessa parola.">
+  <link rel="icon" href="/web/logo.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Instrument+Serif:ital@0;1&display=swap">
+  <link rel="stylesheet" href="/web/style.css">
+  <style>
+    .pagina { max-width: 1240px; margin: 0 auto; padding: 56px var(--gutter) 96px; }
+    .intro h1 { font: clamp(44px, 6vw, 80px)/1 var(--serif); letter-spacing: -.02em; }
+    .intro p { max-width: 62ch; margin: 18px 0 0; font-size: 17px; color: var(--muted); }
+
+    .var { margin-top: 64px; border-top: 1px solid var(--line); padding-top: 22px; display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 20px; }
+    .var-testa { grid-column: 1 / -1; display: flex; align-items: baseline; gap: 16px; }
+    .var-testa .n { font: 500 12px/1 ui-monospace, "SF Mono", monospace; color: var(--muted); }
+    .var-testa h2 { font: 32px/1 var(--serif); }
+    .tavola { border-radius: 22px; border: 1px solid var(--line); background: var(--surface); display: grid; place-items: center; min-height: 340px; padding: 40px; }
+    .tavola .lk { font-size: clamp(56px, 7vw, 104px); }
+    .lato { display: grid; gap: 14px; align-content: start; }
+    .storia { margin: 0; font-size: 16px; line-height: 1.6; color: #3d3a34; }
+    .storia b { font-weight: 600; color: var(--ink); }
+    .scuro { height: 104px; border-radius: 18px; background: var(--ink); display: grid; place-items: center; }
+    .scuro .lk { font-size: 40px; color: #f2efe9; }
+    .barra { border: 1px solid var(--line); border-radius: 16px; background: var(--bg); height: 64px; display: flex; align-items: center; padding: 0 20px; }
+    .barra .lk { font-size: 30px; }
+    .letture { display: flex; gap: 10px; flex-wrap: wrap; font-size: 13px; }
+    .letture span { padding: 6px 12px; border-radius: 999px; background: #e7e2d9; }
+
+    .lk { display: inline-flex; align-items: center; gap: .2em; line-height: 1; color: var(--ink); font-family: var(--serif); letter-spacing: -.015em; }
+    .lk svg { width: 1em; height: 1em; flex: none; }
+    .lk .p { color: #2f6b75; }
+    .scuro .lk .p { color: #7fbcc4; }
+    .lk .s { color: #c9952e; }
+    .scuro .lk .s { color: #e3b75a; }
+    .lk i { font-style: italic; }
+    .pila { display: inline-grid; justify-items: start; gap: .18em; }
+    .pila small { font: italic .26em/1 var(--serif); color: var(--muted); letter-spacing: 0; padding-left: .08em; }
+    .scuro .pila small { color: #b9b2a6; }
+
+    @media (max-width: 900px) { .var { grid-template-columns: 1fr; } .tavola { min-height: 220px; } }
+  </style>
+</head>
+<body>
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <clipPath id="maglia"><path d="M23 10 H27 Q32 17 37 10 H41 L55 18 L50 28 L45 25 V54 H19 V25 L14 28 L9 18 Z"/></clipPath>
+    <!-- Maglietta accordata: t-shirt a tre righe, tre note di un accordo -->
+    <symbol id="m-maglia" viewBox="0 0 64 64">
+      <g clip-path="url(#maglia)">
+        <rect x="0" y="8" width="64" height="23" fill="#2f6b75"/>
+        <rect x="0" y="33" width="64" height="9.5" fill="#b5603f"/>
+        <rect x="0" y="44.5" width="64" height="11" fill="#d8aa44"/>
+      </g>
+    </symbol>
+  </svg>
+
+  <header class="top">
+    <a class="marchio lockup" href="/" aria-label="Torna all'armadio"><svg class="m" aria-hidden="true"><use href="#m-maglia"/></svg><span>close<span style="color:#2f6b75">t<i>une</i></span></span></a>
+  </header>
+
+  <main class="pagina">
+    <div class="intro">
+      <h1>Closet e tune nella stessa parola</h1>
+      <p>La maglietta accordata con la scritta in corsivo. La t è in comune alle due parole: basta darle un ruolo perché si leggano entrambe.</p>
+    </div>
+
+    <section class="var" aria-labelledby="v0">
+      <div class="var-testa"><span class="n">D</span><h2 id="v0">Tutto uguale</h2></div>
+      <div class="tavola"><span class="lk" role="img" aria-label="closetune"><svg aria-hidden="true"><use href="#m-maglia"/></svg><span>closetune</span></span></div>
+      <div class="lato">
+        <p class="storia"><b>Una parola sola, nessun trucco.</b> L'occhio riconosce subito <i>closet</i>, la parola nota; <i>tune</i> lo racconta la maglietta a tre righe.</p>
+        <div class="scuro"><span class="lk"><svg aria-hidden="true"><use href="#m-maglia"/></svg><span>closetune</span></span></div>
+        <div class="barra"><span class="lk"><svg aria-hidden="true"><use href="#m-maglia"/></svg><span>closetune</span></span></div>
+      </div>
+    </section>
+
+    <section class="var" aria-labelledby="v1">
+      <div class="var-testa"><span class="n">A</span><h2 id="v1">Doppia lettura</h2></div>
+      <div class="tavola"><span class="lk" role="img" aria-label="closetune"><svg aria-hidden="true"><use href="#m-maglia"/></svg><span>close<span class="p">t<i>une</i></span></span></span></div>
+      <div class="lato">
+        <p class="storia"><b>La forma dice closet, il colore dice tune.</b> <i>close</i> e la <i>t</i> sono in tondo: insieme fanno <i>closet</i>. La <i>t</i> e <i>une</i> sono in petrolio: insieme fanno <i>tune</i>. Due letture, una parola.</p>
+        <div class="letture"><span>closet → forma</span><span>tune → colore</span></div>
+        <div class="scuro"><span class="lk"><svg aria-hidden="true"><use href="#m-maglia"/></svg><span>close<span class="p">t<i>une</i></span></span></span></div>
+        <div class="barra"><span class="lk"><svg aria-hidden="true"><use href="#m-maglia"/></svg><span>close<span class="p">t<i>une</i></span></span></span></div>
+      </div>
+    </section>
+
+    <section class="var" aria-labelledby="v2">
+      <div class="var-testa"><span class="n">B</span><h2 id="v2">La t cerniera</h2></div>
+      <div class="tavola"><span class="lk" role="img" aria-label="closetune"><svg aria-hidden="true"><use href="#m-maglia"/></svg><span>close<span class="s">t</span><i>une</i></span></span></div>
+      <div class="lato">
+        <p class="storia"><b>Una lettera sola fa da perno.</b> La <i>t</i> senape è il bottone che chiude <i>closet</i> e apre <i>tune</i>. Più sottile della A: si nota alla seconda occhiata.</p>
+        <div class="letture"><span>closet ← t → tune</span></div>
+        <div class="scuro"><span class="lk"><svg aria-hidden="true"><use href="#m-maglia"/></svg><span>close<span class="s">t</span><i>une</i></span></span></div>
+        <div class="barra"><span class="lk"><svg aria-hidden="true"><use href="#m-maglia"/></svg><span>close<span class="s">t</span><i>une</i></span></span></div>
+      </div>
+    </section>
+
+    <section class="var" aria-labelledby="v3">
+      <div class="var-testa"><span class="n">C</span><h2 id="v3">Con il sottotitolo</h2></div>
+      <div class="tavola"><span class="lk" role="img" aria-label="closetune, il tuo closet, accordato"><svg aria-hidden="true"><use href="#m-maglia"/></svg><span class="pila"><span>close<span class="p">t<i>une</i></span></span><small>il tuo closet, accordato</small></span></span></div>
+      <div class="lato">
+        <p class="storia"><b>La A, più una riga che lo dice.</b> Il sottotitolo nomina il closet e spiega il <i>tune</i>. Si usa dove c'è spazio (schermata d'avvio, brand board); nella barra dell'app resta la A.</p>
+        <div class="letture"><span>per la schermata d'avvio</span></div>
+        <div class="scuro"><span class="lk"><svg aria-hidden="true"><use href="#m-maglia"/></svg><span class="pila"><span>close<span class="p">t<i>une</i></span></span><small>il tuo closet, accordato</small></span></span></div>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

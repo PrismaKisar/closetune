@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>closetune · Brand</title>
+  <meta name="description" content="Nome, marchio, colori e caratteri di closetune.">
+  <link rel="icon" href="/web/logo.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Instrument+Serif:ital@0;1&display=swap">
+  <link rel="stylesheet" href="/web/style.css">
+  <style>
+    .brand { max-width: 1200px; margin: 0 auto; padding: 0 var(--gutter) 96px; }
+    .brand section { padding: 88px 0; border-top: 1px solid var(--line); }
+    .brand section:first-child { border-top: 0; padding-top: 0; }
+    .etichetta { font: 600 11px/1 var(--sans); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); margin: 0 0 20px; }
+    .brand h2 { font: clamp(40px, 5vw, 64px)/1 var(--serif); letter-spacing: -.02em; max-width: 16ch; }
+    .testo { max-width: 56ch; font-size: 17px; line-height: 1.6; color: #3d3a34; margin: 28px 0 0; }
+
+    .copertina { min-height: calc(100vh - 72px); display: grid; place-items: center; text-align: center; }
+    .copertina .lockup { font-size: clamp(64px, 11vw, 168px); }
+    .copertina p { margin: 24px 0 0; font: italic clamp(22px, 2.4vw, 32px)/1.2 var(--serif); color: var(--muted); }
+
+    .due { display: grid; grid-template-columns: 1fr 1fr; gap: 56px; align-items: start; margin-top: 40px; }
+    .parola { font: clamp(44px, 6vw, 80px)/1 var(--serif); letter-spacing: -.02em; margin: 0; }
+    .parola span { color: #c9c0b1; }
+    .parola + p { margin: 12px 0 0; color: var(--muted); }
+
+    .costruzione { aspect-ratio: 1; max-width: 460px; width: 100%; background: var(--surface); border: 1px solid var(--line); border-radius: 24px; display: grid; place-items: center; }
+    .costruzione svg { width: 66%; height: 66%; overflow: visible; }
+    .guida { fill: none; stroke: #c9c0b1; stroke-width: .3; stroke-dasharray: 1 1; }
+    .legenda { list-style: none; margin: 0; padding: 0; display: grid; gap: 18px; }
+    .legenda li { display: grid; grid-template-columns: 44px 1fr; gap: 16px; align-items: start; }
+    .legenda i { width: 44px; height: 44px; border-radius: 12px; background: var(--c); box-shadow: inset 0 0 0 1px rgb(0 0 0 / .08); }
+    .legenda p { margin: 0; }
+    .legenda b { display: block; font-weight: 500; }
+    .legenda span { color: var(--muted); font-size: 14px; }
+
+    .versioni { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 40px; }
+    .tavola { aspect-ratio: 4 / 3; border-radius: 20px; display: grid; place-items: center; font-size: clamp(30px, 3.4vw, 44px); border: 1px solid var(--line); }
+    .tavola.chiara { background: var(--surface); }
+    .tavola.scura { background: var(--ink); border-color: var(--ink); }
+    .tavola.scura .lockup { color: #f2efe9; }
+    .tavola.tono { background: #e9dcc4; border-color: #e9dcc4; }
+
+    .icone { display: flex; align-items: end; gap: 32px; flex-wrap: wrap; margin-top: 40px; }
+    .app { display: grid; place-items: center; border-radius: 22.5%; background: #f6f2ea; box-shadow: 0 20px 40px -24px rgb(40 30 20 / .5), 0 0 0 1px rgb(0 0 0 / .05); }
+    .app svg { width: 66%; height: 66%; }
+    .app.scura { background: var(--ink); }
+    .icone figure { margin: 0; display: grid; gap: 10px; justify-items: center; font-size: 12px; color: var(--muted); }
+
+    .avvio-demo { margin-top: 40px; border-radius: 28px; border: 1px solid var(--line); background: var(--bg); min-height: 420px; display: grid; place-content: center; justify-items: center; gap: 16px; }
+    .avvio-demo .lockup { font-size: clamp(48px, 7vw, 88px); }
+    .avvio-demo p { margin: 0; font: italic clamp(20px, 2vw, 26px)/1.2 var(--serif); color: var(--muted); }
+
+    .toni { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-top: 40px; }
+    .tono-c { border-radius: 16px; overflow: hidden; border: 1px solid var(--line); background: var(--surface); }
+    .tono-c div { aspect-ratio: 1 / 1.1; background: var(--c); }
+    .tono-c p { margin: 0; padding: 12px 14px 14px; font-size: 14px; }
+    .tono-c code { display: block; font: 12px ui-monospace, "SF Mono", monospace; color: var(--muted); margin-top: 2px; }
+
+    .caratteri { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 40px; }
+    .carattere { padding: 32px; border-radius: 20px; background: var(--surface); border: 1px solid var(--line); }
+    .carattere .grande { font-size: 96px; line-height: 1; margin: 8px 0 20px; color: var(--ink); }
+    .serif { font-family: var(--serif); }
+    .carattere p { margin: 0; color: var(--muted); }
+
+    .uso { margin-top: 40px; border-radius: 20px; overflow: hidden; border: 1px solid var(--line); }
+    .uso .top { position: static; }
+
+    @media (max-width: 860px) {
+      .due, .caratteri { grid-template-columns: 1fr; }
+      .versioni { grid-template-columns: 1fr; }
+      .toni { grid-template-columns: repeat(2, 1fr); }
+      .brand section { padding: 64px 0; }
+      .uso .cerca, .uso .conteggio { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <defs><clipPath id="maglia"><path d="M23 10 H27 Q32 17 37 10 H41 L55 18 L50 28 L45 25 V54 H19 V25 L14 28 L9 18 Z"/></clipPath></defs>
+    <symbol id="marchio" viewBox="0 0 64 64">
+      <g clip-path="url(#maglia)">
+        <rect x="0" y="8" width="64" height="23" fill="#2f6b75"/>
+        <rect x="0" y="33" width="64" height="9.5" fill="#b5603f"/>
+        <rect x="0" y="44.5" width="64" height="11" fill="#d8aa44"/>
+      </g>
+    </symbol>
+  </svg>
+
+  <header class="top">
+    <a class="marchio lockup" href="/" aria-label="closetune, torna all'armadio"><svg class="m" aria-hidden="true"><use href="#marchio"/></svg><span>closetune</span></a>
+  </header>
+
+  <main class="brand">
+    <section class="copertina" aria-label="closetune">
+      <div>
+        <span class="lockup" role="img" aria-label="closetune"><svg class="m" aria-hidden="true"><use href="#marchio"/></svg><span>closetune</span></span>
+        <p>il tuo closet, accordato</p>
+      </div>
+    </section>
+
+    <section>
+      <p class="etichetta">Il nome</p>
+      <h2>Una parola, due letture</h2>
+      <div class="due">
+        <div>
+          <p class="parola">closet<span>une</span></p>
+          <p>Si legge per primo: è la parola che l'occhio conosce.</p>
+        </div>
+        <div>
+          <p class="parola"><span>close</span>tune</p>
+          <p>Arriva alla seconda lettura: abbinare è accordare.</p>
+        </div>
+      </div>
+      <p class="testo">La scritta è tutta uguale, minuscola, senza trucchi: la t resta in comune alle due parole. Il <em>tune</em> lo raccontano la maglietta a tre righe e il payoff, <em>il tuo closet, accordato</em>.</p>
+    </section>
+
+    <section>
+      <p class="etichetta">Il marchio</p>
+      <h2>La maglietta accordata</h2>
+      <div class="due">
+        <div class="costruzione" role="img" aria-label="Costruzione del marchio">
+          <svg viewBox="0 0 64 64" aria-hidden="true">
+            <line class="guida" x1="0" y1="31" x2="64" y2="31"/><line class="guida" x1="0" y1="33" x2="64" y2="33"/>
+            <line class="guida" x1="0" y1="42.5" x2="64" y2="42.5"/><line class="guida" x1="0" y1="44.5" x2="64" y2="44.5"/>
+            <line class="guida" x1="32" y1="4" x2="32" y2="60"/>
+            <use href="#marchio"/>
+          </svg>
+        </div>
+        <ul class="legenda">
+          <li><i style="--c:#2f6b75"></i><p><b>Petrolio</b><span>Spalle e maniche: il blu che sta meglio al sottotono caldo, vicino al viso.</span></p></li>
+          <li><i style="--c:#b5603f"></i><p><b>Terracotta</b><span>La riga di mezzo: la terra calda della palette autunnale.</span></p></li>
+          <li><i style="--c:#d8aa44"></i><p><b>Senape</b><span>L'orlo: l'accento, il colore pieno che i neutri lasciano parlare.</span></p></li>
+          <li><i style="--c:#f2efe9"></i><p><b>Le due pause</b><span>Tra una riga e l'altra il fondo respira: tre note distinte, un solo accordo.</span></p></li>
+        </ul>
+      </div>
+    </section>
+
+    <section>
+      <p class="etichetta">Versioni</p>
+      <h2>Su chiaro, su scuro, sul tessuto</h2>
+      <div class="versioni">
+        <div class="tavola chiara"><span class="lockup" role="img" aria-label="closetune su chiaro"><svg class="m" aria-hidden="true"><use href="#marchio"/></svg><span>closetune</span></span></div>
+        <div class="tavola scura"><span class="lockup" role="img" aria-label="closetune su scuro"><svg class="m" aria-hidden="true"><use href="#marchio"/></svg><span>closetune</span></span></div>
+        <div class="tavola tono"><span class="lockup" role="img" aria-label="closetune su beige"><svg class="m" aria-hidden="true"><use href="#marchio"/></svg><span>closetune</span></span></div>
+      </div>
+      <div class="icone">
+        <figure><div class="app" style="width:168px;height:168px"><svg aria-hidden="true"><use href="#marchio"/></svg></div>Icona app</figure>
+        <figure><div class="app scura" style="width:168px;height:168px"><svg aria-hidden="true"><use href="#marchio"/></svg></div>Icona scura</figure>
+        <figure><div class="app" style="width:64px;height:64px"><svg aria-hidden="true"><use href="#marchio"/></svg></div>64 px</figure>
+        <figure><svg width="32" height="32" aria-hidden="true"><use href="#marchio"/></svg>32 px</figure>
+        <figure><svg width="16" height="16" aria-hidden="true"><use href="#marchio"/></svg>16 px</figure>
+      </div>
+    </section>
+
+    <section>
+      <p class="etichetta">Payoff</p>
+      <h2>La schermata d'avvio</h2>
+      <div class="avvio-demo">
+        <span class="lockup" role="img" aria-label="closetune"><svg class="m" aria-hidden="true"><use href="#marchio"/></svg><span>closetune</span></span>
+        <p>il tuo closet, accordato</p>
+      </div>
+    </section>
+
+    <section>
+      <p class="etichetta">Colori</p>
+      <h2>Tre toni caldi su una base di carta</h2>
+      <div class="toni">
+        <div class="tono-c"><div style="--c:#f2efe9"></div><p>Carta<code>#f2efe9</code></p></div>
+        <div class="tono-c"><div style="--c:#1d1b18"></div><p>Inchiostro<code>#1d1b18</code></p></div>
+        <div class="tono-c"><div style="--c:#2f6b75"></div><p>Petrolio<code>#2f6b75</code></p></div>
+        <div class="tono-c"><div style="--c:#b5603f"></div><p>Terracotta<code>#b5603f</code></p></div>
+        <div class="tono-c"><div style="--c:#d8aa44"></div><p>Senape<code>#d8aa44</code></p></div>
+      </div>
+    </section>
+
+    <section>
+      <p class="etichetta">Caratteri</p>
+      <h2>Una voce da rivista, una da strumento</h2>
+      <div class="caratteri">
+        <div class="carattere"><p>Nome e titoli · Instrument Serif</p><p class="grande serif">Aa <i>Aa</i></p><p>La scritta, i titoli, il payoff in corsivo.</p></div>
+        <div class="carattere"><p>Testo e interfaccia · Geist</p><p class="grande">Aa</p><p>Filtri, schede, motivazioni, numeri.</p></div>
+      </div>
+    </section>
+
+    <section>
+      <p class="etichetta">Nell'app</p>
+      <h2>La barra in alto</h2>
+      <div class="uso">
+        <header class="top">
+          <span class="marchio lockup"><svg class="m" aria-hidden="true"><use href="#marchio"/></svg><span>closetune</span></span>
+          <span class="cerca" aria-hidden="true"><input type="search" placeholder="Cerca" tabindex="-1" disabled></span>
+          <p class="conteggio">37 attivi · 95 censiti</p>
+        </header>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

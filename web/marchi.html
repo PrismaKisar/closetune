@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Closetone · Direzioni</title>
+  <meta name="description" content="Quattro direzioni di nome e marchio per l'armadio digitale.">
+  <link rel="icon" href="/web/logo.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap">
+  <link rel="stylesheet" href="/web/style.css">
+  <style>
+    .dir-pagina { max-width: 1240px; margin: 0 auto; padding: 56px var(--gutter) 96px; }
+    .intro h1 { font: clamp(44px, 6vw, 80px)/1 var(--serif); letter-spacing: -.02em; }
+    .intro p { max-width: 58ch; margin: 18px 0 0; font-size: 17px; color: var(--muted); }
+
+    .dir { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 20px; margin-top: 64px; }
+    .dir-testa { grid-column: 1 / -1; display: flex; align-items: baseline; gap: 16px; border-top: 1px solid var(--line); padding-top: 22px; }
+    .dir-testa .n { font: 500 12px/1 ui-monospace, "SF Mono", monospace; color: var(--muted); }
+    .dir-testa h2 { font: 32px/1 var(--serif); flex: 1; }
+    .dir-testa em { font-style: normal; font-size: 12px; padding: 4px 10px; border-radius: 999px; background: var(--ink); color: var(--bg); }
+
+    .tavola { border-radius: 22px; border: 1px solid var(--line); background: var(--surface); display: grid; place-items: center; min-height: 360px; padding: 40px; }
+    .tavola .lk { font-size: clamp(48px, 6.4vw, 92px); }
+    .lato { display: grid; gap: 20px; align-content: start; }
+    .lato .storia { margin: 0; font-size: 16px; line-height: 1.6; color: #3d3a34; }
+    .lato .storia b { font-weight: 600; color: var(--ink); }
+    .mini { display: grid; grid-template-columns: 96px 96px minmax(0, 1fr); gap: 14px; align-items: center; }
+    .mini .barra { grid-column: 1 / -1; }
+    .app { width: 96px; height: 96px; border-radius: 22.5%; display: grid; place-items: center; background: #f6f2ea; box-shadow: 0 20px 36px -22px rgb(40 30 20 / .5), 0 0 0 1px rgb(0 0 0 / .05); }
+    .app svg { width: 62%; height: 62%; }
+    .app.scura { background: var(--ink); --punto: #f2efe9; --tratto: #f2efe9; }
+    .scuro { height: 96px; border-radius: 18px; background: var(--ink); display: grid; place-items: center; padding: 0 20px; --punto: #f2efe9; --tratto: #f2efe9; }
+    .scuro .lk { font-size: 30px; color: #f2efe9; }
+    .scuro .lk-ica { font-size: 15px; }
+    .barra .lk-ica { font-size: 15px; }
+    .barra { border: 1px solid var(--line); border-radius: 16px; background: var(--bg); height: 64px; display: flex; align-items: center; gap: 16px; padding: 0 20px; }
+    .barra .lk { font-size: 26px; white-space: nowrap; }
+    .barra span.f { margin-left: auto; height: 36px; width: 40%; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); }
+    .pro { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; font-size: 14px; color: var(--muted); }
+    .pro li::before { content: "— "; }
+
+    /* lockup comuni */
+    .lk { display: inline-flex; align-items: center; gap: .2em; line-height: 1; color: var(--ink); }
+    .lk svg { width: .92em; height: .92em; flex: none; }
+    .m { --punto: var(--ink); --tratto: var(--ink); fill: var(--punto); }
+    .app.scura .m, .scuro .m { --punto: #f2efe9; --tratto: #f2efe9; }
+    /* 01 Closetone */
+    .lk-tone { font-family: var(--serif); letter-spacing: -.02em; gap: .16em; }
+    .lk-tone i { font-style: italic; }
+    /* 02 Closetinta: sans minuscolo, amichevole */
+    .lk-tinta { font-family: var(--sans); font-weight: 600; letter-spacing: -.045em; font-size: .78em; }
+    .tavola .lk-tinta { font-size: clamp(40px, 5.4vw, 76px); }
+    .lk-tinta b { font-weight: 600; color: #b5603f; }
+    .scuro .lk-tinta b { color: #e0875f; }
+    /* 03 Closetune: serif minuscolo con il tono sottolineato */
+    .lk-tune { font-family: var(--serif); letter-spacing: -.01em; }
+    .lk-tune u { text-decoration: none; background: linear-gradient(90deg, #2f6b75 0 33.3%, #b5603f 0 66.6%, #d8aa44 0) bottom / 100% .07em no-repeat; padding-bottom: .04em; }
+    /* 04 Closetica: maiuscolo spaziato, da maison */
+    .lk-ica { font-family: var(--sans); font-weight: 500; text-transform: uppercase; letter-spacing: .3em; font-size: .5em; gap: .9em; }
+    .lk-ica svg { width: 1.7em; height: 1.7em; }
+    .tavola .lk-ica { font-size: clamp(26px, 3.2vw, 44px); }
+
+    .confronto { margin-top: 88px; border-top: 1px solid var(--line); padding-top: 22px; }
+    .confronto h2 { font: 32px/1 var(--serif); }
+    .schermo { margin-top: 28px; border-radius: 28px; padding: 44px 32px; background: linear-gradient(160deg, #2c3d44, #1d1b18 70%); display: flex; flex-wrap: wrap; justify-content: center; gap: 40px; }
+    .schermo figure { margin: 0; display: grid; justify-items: center; gap: 10px; color: #e9e4da; font-size: 13px; }
+    .schermo .app { width: 84px; height: 84px; }
+
+    @media (max-width: 900px) {
+      .dir { grid-template-columns: 1fr; }
+      .tavola { min-height: 240px; }
+    }
+    @media (max-width: 480px) {
+      .mini { grid-template-columns: 1fr 1fr; }
+      .mini .scuro { grid-column: 1 / -1; }
+      .mini .app { width: 100%; height: auto; aspect-ratio: 1; max-width: 120px; }
+      .scuro .lk { font-size: 24px; }
+    }
+  </style>
+</head>
+<body>
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <!-- 01 Closetone: la ruota dei colori aperta come un'anta, il punto è il capo da cui parti -->
+    <symbol id="m-tone" viewBox="0 0 64 64">
+      <g fill="none" stroke-width="9">
+        <path d="M18.36 17.37 A20 20 0 0 1 47.32 19.14" stroke="#2f6b75"/>
+        <path d="M17.37 45.64 A20 20 0 0 1 17.37 18.36" stroke="#b5603f"/>
+        <path d="M47.32 44.86 A20 20 0 0 1 18.36 46.63" stroke="#d8aa44"/>
+      </g>
+      <circle cx="52" cy="32" r="5"/>
+    </symbol>
+    <!-- 02 Closetinta: due campioni di tessuto; dove si sovrappongono sono "in tinta" -->
+    <symbol id="m-tinta" viewBox="0 0 64 64">
+      <rect x="9" y="9" width="30" height="30" rx="7" fill="#b5603f"/>
+      <rect x="25" y="25" width="30" height="30" rx="7" fill="#d8aa44"/>
+      <path d="M25 32 A7 7 0 0 1 32 25 H39 V32 A7 7 0 0 1 32 39 H25 Z" fill="#2f6b75"/>
+    </symbol>
+    <!-- 03 Closetune: tre capi piegati in pila, tre note di un accordo -->
+    <symbol id="m-tune" viewBox="0 0 64 64">
+      <rect x="17" y="15" width="30" height="9.5" rx="4.75" fill="#2f6b75"/>
+      <rect x="13" y="27.25" width="38" height="9.5" rx="4.75" fill="#b5603f"/>
+      <rect x="10" y="39.5" width="44" height="9.5" rx="4.75" fill="#d8aa44"/>
+    </symbol>
+    <!-- 04 Closetica: l'anta ad arco di un armadio, due maniglie nei toni della palette -->
+    <symbol id="m-ica" viewBox="0 0 64 64">
+      <path d="M17 52 V29 A15 15 0 0 1 47 29 V52 Z M32 14 V52" style="fill:none;stroke:var(--tratto);stroke-width:3.5;stroke-linejoin:round"/>
+      <circle cx="27.5" cy="36" r="2.6" fill="#b5603f"/>
+      <circle cx="36.5" cy="36" r="2.6" fill="#d8aa44"/>
+    </symbol>
+  </svg>
+
+  <header class="top">
+    <a class="marchio lockup" href="/" aria-label="Closetone, torna all'armadio"><svg class="m" aria-hidden="true"><use href="#m-tone"/></svg><span>Close<i>tone</i></span></a>
+  </header>
+
+  <main class="dir-pagina">
+    <div class="intro">
+      <h1>Quattro modi di chiamare l'armadio</h1>
+      <p>Tutti partono da <em>closet</em> e dalla stessa palette calda: petrolio, terracotta, senape. Cambiano il racconto e la forma del marchio.</p>
+    </div>
+
+    <section class="dir" aria-labelledby="d1">
+      <div class="dir-testa"><span class="n">01</span><h2 id="d1">Closetone</h2><em>Attuale</em></div>
+      <div class="tavola"><span class="lk lk-tone" role="img" aria-label="Closetone"><svg class="m" aria-hidden="true"><use href="#m-tone"/></svg><span>Close<i>tone</i></span></span></div>
+      <div class="lato">
+        <p class="storia"><b>Closet + tone.</b> L'armadio e il tono di colore; all'italiana, un "closettone". Il marchio è la ruota dei colori aperta come un'anta, col punto del capo da cui parti.</p>
+        <div class="mini">
+          <div class="app"><svg class="m" aria-hidden="true"><use href="#m-tone"/></svg></div>
+          <div class="app scura"><svg class="m" aria-hidden="true"><use href="#m-tone"/></svg></div>
+          <div class="scuro"><span class="lk lk-tone"><svg class="m" aria-hidden="true"><use href="#m-tone"/></svg><span>Close<i>tone</i></span></span></div>
+          <div class="barra"><span class="lk lk-tone"><svg class="m" aria-hidden="true"><use href="#m-tone"/></svg><span>Close<i>tone</i></span></span><span class="f"></span></div>
+        </div>
+        <ul class="pro"><li>Racconta la funzione: la ruota è la stessa dell'app</li><li>Elegante, da rivista</li></ul>
+      </div>
+    </section>
+
+    <section class="dir" aria-labelledby="d2">
+      <div class="dir-testa"><span class="n">02</span><h2 id="d2">Closetinta</h2></div>
+      <div class="tavola"><span class="lk lk-tinta" role="img" aria-label="Closetinta"><svg class="m" aria-hidden="true"><use href="#m-tinta"/></svg><span>close<b>tinta</b></span></span></div>
+      <div class="lato">
+        <p class="storia"><b>Closet + in tinta.</b> "In tinta" è come diciamo in italiano che due colori si abbinano. Il marchio sono due campioni di tessuto: dove si sovrappongono nasce il terzo tono, l'abbinamento.</p>
+        <div class="mini">
+          <div class="app"><svg class="m" aria-hidden="true"><use href="#m-tinta"/></svg></div>
+          <div class="app scura"><svg class="m" aria-hidden="true"><use href="#m-tinta"/></svg></div>
+          <div class="scuro"><span class="lk lk-tinta"><svg class="m" aria-hidden="true"><use href="#m-tinta"/></svg><span>close<b>tinta</b></span></span></div>
+          <div class="barra"><span class="lk lk-tinta"><svg class="m" aria-hidden="true"><use href="#m-tinta"/></svg><span>close<b>tinta</b></span></span><span class="f"></span></div>
+        </div>
+        <ul class="pro"><li>Il più italiano e il più caldo</li><li>Tono da app quotidiana, minuscolo e amichevole</li></ul>
+      </div>
+    </section>
+
+    <section class="dir" aria-labelledby="d3">
+      <div class="dir-testa"><span class="n">03</span><h2 id="d3">Closetune</h2></div>
+      <div class="tavola"><span class="lk lk-tune" role="img" aria-label="Closetune"><svg class="m" aria-hidden="true"><use href="#m-tune"/></svg><span>close<u>tune</u></span></span></div>
+      <div class="lato">
+        <p class="storia"><b>Closet + tune.</b> Abbinare è accordare: colori che suonano bene insieme. Il marchio è una pila di tre capi piegati, larghi come le note di un accordo; la sottolineatura riprende i tre toni.</p>
+        <div class="mini">
+          <div class="app"><svg class="m" aria-hidden="true"><use href="#m-tune"/></svg></div>
+          <div class="app scura"><svg class="m" aria-hidden="true"><use href="#m-tune"/></svg></div>
+          <div class="scuro"><span class="lk lk-tune"><svg class="m" aria-hidden="true"><use href="#m-tune"/></svg><span>close<u>tune</u></span></span></div>
+          <div class="barra"><span class="lk lk-tune"><svg class="m" aria-hidden="true"><use href="#m-tune"/></svg><span>close<u>tune</u></span></span><span class="f"></span></div>
+        </div>
+        <ul class="pro"><li>Il marchio più semplice da riconoscere da piccolo</li><li>Metafora dell'armonia, più astratta</li></ul>
+      </div>
+    </section>
+
+    <section class="dir" aria-labelledby="d4">
+      <div class="dir-testa"><span class="n">04</span><h2 id="d4">Closetica</h2></div>
+      <div class="tavola"><span class="lk lk-ica" role="img" aria-label="Closetica"><svg class="m" aria-hidden="true"><use href="#m-ica"/></svg><span>Closetica</span></span></div>
+      <div class="lato">
+        <p class="storia"><b>Closet + estetica.</b> Suona come una maison: l'arte di comporre l'armadio. Il marchio è l'anta ad arco di un armadio a due porte, con le maniglie nei toni caldi.</p>
+        <div class="mini">
+          <div class="app"><svg class="m" aria-hidden="true"><use href="#m-ica"/></svg></div>
+          <div class="app scura"><svg class="m" aria-hidden="true"><use href="#m-ica"/></svg></div>
+          <div class="scuro"><span class="lk lk-ica"><svg class="m" aria-hidden="true"><use href="#m-ica"/></svg><span>Closetica</span></span></div>
+          <div class="barra"><span class="lk lk-ica"><svg class="m" aria-hidden="true"><use href="#m-ica"/></svg><span>Closetica</span></span><span class="f"></span></div>
+        </div>
+        <ul class="pro"><li>Il più lussuoso, da negozio di moda</li><li>Dice "armadio" a colpo d'occhio, meno "colore"</li></ul>
+      </div>
+    </section>
+
+    <section class="confronto" aria-labelledby="d5">
+      <h2 id="d5">Sulla schermata del telefono</h2>
+      <div class="schermo">
+        <figure><div class="app"><svg class="m" aria-hidden="true"><use href="#m-tone"/></svg></div>Closetone</figure>
+        <figure><div class="app"><svg class="m" aria-hidden="true"><use href="#m-tinta"/></svg></div>Closetinta</figure>
+        <figure><div class="app"><svg class="m" aria-hidden="true"><use href="#m-tune"/></svg></div>Closetune</figure>
+        <figure><div class="app"><svg class="m" aria-hidden="true"><use href="#m-ica"/></svg></div>Closetica</figure>
+      </div>
+    </section>
+  </main>
+</body>
+</html>
