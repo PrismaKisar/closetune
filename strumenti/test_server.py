@@ -2,6 +2,7 @@
 import json
 import tempfile
 import threading
+import time
 import unittest
 import urllib.request
 from functools import partial
@@ -101,6 +102,24 @@ class TestServer(unittest.TestCase):
                 self.assertEqual(urllib.request.urlopen(f"{base}/foto/{una.name}").status, 200)
         finally:
             srv.shutdown()
+
+
+class TestSpegnimento(unittest.TestCase):
+    def test_si_spegne_solo_dopo_inattivita(self):
+        srv = ThreadingHTTPServer(("127.0.0.1", 0), partial(server.Handler, directory=str(server.ROOT)))
+        servito = threading.Thread(target=srv.serve_forever, daemon=True)
+        servito.start()
+        server.Handler.ultima = time.monotonic()
+        guardia = server.spegni_se_inattivo(srv, 0.6, ogni=0.05)
+        for _ in range(4):  # richieste ogni 0.3 s: resta acceso oltre la soglia
+            urllib.request.urlopen(f"http://127.0.0.1:{srv.server_port}/api/capi").read()
+            time.sleep(0.3)
+        self.assertTrue(guardia.is_alive())
+        guardia.join(2)  # poi nessuna richiesta: si spegne
+        self.assertFalse(guardia.is_alive())
+        servito.join(2)
+        self.assertFalse(servito.is_alive())
+        srv.server_close()
 
 
 CAPO_STATO = """---
