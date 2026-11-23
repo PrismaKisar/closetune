@@ -1,4 +1,4 @@
-"""foto_web.py [NNN ...] -> foto/web/NNN.webp: versione da vetrina delle foto calibrate, solo per il sito.
+"""foto_web.py [NNN ...] -> dati/foto/web/NNN.webp: versione da vetrina delle foto calibrate, solo per il sito.
 
 La foto calibrata (foto/NNN.webp) resta la fonte: qui si ritocca solo l'aspetto, l'hex non si misura da qui.
 - alte luci compresse con una spalla morbida: i capi bianchi non sembrano "sparaflashati"
@@ -6,7 +6,7 @@ La foto calibrata (foto/NNN.webp) resta la fonte: qui si ritocca solo l'aspetto,
 - contrasto locale: trecce, coste e pieghe tornano leggibili
 - ombra morbida sotto il capo, sfondo caldo chiaro (= --frame del sito)
 Senza argomenti rigenera solo le foto mancanti o più vecchie dell'originale.
-Uso: .venv/bin/python tools/foto_web.py [NNN ...]
+Uso: .venv/bin/python strumenti/foto_web.py [NNN ...]
 """
 import sys
 from pathlib import Path
@@ -15,9 +15,9 @@ import numpy as np
 from PIL import Image
 from scipy import ndimage as ndi
 
-ROOT = Path(__file__).resolve().parent.parent
+DATI = Path(__file__).resolve().parent.parent / "dati"
 SRC_BG = np.array([235, 235, 236], float)  # sfondo scritto da foto.py
-BG = np.array([239, 237, 232], float)      # sfondo web, caldo: --frame in web/style.css
+BG = np.array([239, 237, 232], float)      # sfondo web, caldo: --frame in sito/style.css
 MAXSIDE = 900
 
 SPALLA = 0.72      # da qui in su le luci si comprimono
@@ -90,16 +90,16 @@ def ritocca(img):
 
 
 def da_fare(nomi=None):
-    sorgenti = sorted(p for p in (ROOT / "foto").glob("*.webp"))
+    sorgenti = sorted(p for p in (DATI / "foto").glob("*.webp"))
     if nomi:
         return [p for p in sorgenti if p.stem in nomi]
-    dest = ROOT / "foto" / "web"
+    dest = DATI / "foto" / "web"
     return [p for p in sorgenti
             if not (dest / p.name).exists() or (dest / p.name).stat().st_mtime < p.stat().st_mtime]
 
 
 def main(nomi):
-    dest = ROOT / "foto" / "web"
+    dest = DATI / "foto" / "web"
     dest.mkdir(parents=True, exist_ok=True)
     for p in da_fare(nomi):
         out = ritocca(Image.open(p))

@@ -12,7 +12,7 @@ if [ ! -x .venv/bin/python ]; then
   .venv/bin/pip install -q -r requirements.txt
 fi
 if ! curl -fs -o /dev/null "$URL"; then
-  nohup .venv/bin/python tools/web.py "$PORT" > .closetune.log 2>&1 &
+  nohup .venv/bin/python strumenti/server.py "$PORT" > .closetune.log 2>&1 &
   i=0; until curl -fs -o /dev/null "$URL"; do
     i=$((i + 1)); [ $i -gt 100 ] && { echo "Il server non parte, vedi $DIR/.closetune.log"; exit 1; }
     sleep 0.2

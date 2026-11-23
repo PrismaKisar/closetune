@@ -4,7 +4,7 @@
   --ink: #1d1b18;
   --muted: #6c665c;
   --line: #e2dcd1;
-  --frame: #efede8; /* = sfondo delle foto web (tools/foto_web.py): il capo si fonde con la cornice */
+  --frame: #efede8; /* = sfondo delle foto web (strumenti/foto_web.py): il capo si fonde con la cornice */
   --accent: #9c4a26;
   --serif: "Instrument Serif", "Iowan Old Style", Georgia, serif;
   --sans: "Geist", ui-sans-serif, system-ui, -apple-system, sans-serif;
