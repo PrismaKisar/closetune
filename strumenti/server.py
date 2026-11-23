@@ -1,5 +1,5 @@
-"""closetune (armadio web): serve web/ + foto/ e /api/capi letto dal vivo da capi/*.md.
-Uso: .venv/bin/python tools/web.py [porta]   ->  http://127.0.0.1:8000
+"""closetune: serve sito/ + dati/foto/ e /api/capi letto dal vivo da dati/capi/*.md.
+Uso: ./closetune  (oppure .venv/bin/python strumenti/server.py [porta]  ->  http://127.0.0.1:8000)
 """
 import json
 import posixpath
@@ -11,6 +11,7 @@ from pathlib import Path
 from urllib.parse import unquote
 
 ROOT = Path(__file__).resolve().parent.parent
+DATI = ROOT / "dati"  # dati personali, fuori dal repo
 
 # Hex stimati dal nome colore, solo per i capi senza `hex` misurato (frase più lunga prima).
 NOMI_HEX = {
@@ -69,7 +70,7 @@ def leggi_capo(testo):
     return capo
 
 
-def carica(root=ROOT):
+def carica(root=DATI):
     capi = [c for f in sorted((root / "capi").glob("*.md")) if (c := leggi_capo(f.read_text()))]
     # una foto condivisa da più capi è un collage, non il ritratto del capo
     uso = {}
@@ -78,7 +79,7 @@ def carica(root=ROOT):
             uso[c["foto"]] = uso.get(c["foto"], 0) + 1
     for c in capi:
         c["foto_collage"] = bool(c.get("foto")) and uso[c["foto"]] > 1
-        # versione da vetrina (tools/foto_web.py), se c'è
+        # versione da vetrina (strumenti/foto_web.py), se c'è
         if c.get("foto") and (root / "foto" / "web" / Path(c["foto"]).name).exists():
             c["foto_web"] = f"foto/web/{Path(c['foto']).name}"
     outfit_md = root / "outfit.md"
@@ -92,7 +93,7 @@ def carica(root=ROOT):
 STATI = ("attivo", "dismesso")
 
 
-def imposta_stato(id_capo, stato, root=ROOT):
+def imposta_stato(id_capo, stato, root=DATI):
     """Riscrive solo la riga `stato:` del frontmatter del capo con quell'id. Ritorna False se non c'è."""
     if stato not in STATI:
         raise ValueError(stato)
@@ -113,7 +114,7 @@ def imposta_stato(id_capo, stato, root=ROOT):
 
 
 class Handler(SimpleHTTPRequestHandler):
-    root = ROOT  # i test lo puntano su una cartella temporanea
+    root = DATI  # i test lo puntano su una cartella temporanea
 
     def end_headers(self):
         # foto e codice cambiano spesso: il browser rivalida sempre (304 se il file non è cambiato)
@@ -132,8 +133,10 @@ class Handler(SimpleHTTPRequestHandler):
             return
         percorso = posixpath.normpath(unquote(self.path.split("?")[0]))
         if percorso == "/":
-            self.path = "/web/index.html"
-        elif not percorso.startswith(("/web/", "/foto/")):
+            self.path = "/sito/index.html"
+        elif percorso.startswith("/foto/"):
+            self.path = "/dati" + percorso  # le foto stanno nei dati, l'URL resta /foto/...
+        elif not percorso.startswith("/sito/"):
             self.send_error(404)
             return
         super().do_GET()

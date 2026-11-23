@@ -21,14 +21,28 @@ Per lanciarlo da qualsiasi cartella scrivendo solo `closetune`:
 mkdir -p ~/.local/bin && ln -sf "$PWD/closetune" ~/.local/bin/closetune   # ~/.local/bin deve essere nel PATH
 ```
 
+## Struttura
+
+```
+closetune     comando di avvio
+sito/         il sito: index.html, app.js, abbinamenti.js (colori e outfit), style.css
+strumenti/    server.py, foto.py (foto calibrate), cinture.py, foto_web.py, test
+dati/         i tuoi dati (privati)
+```
+
 ## I tuoi dati
 
-I dati restano sul tuo computer e non finiscono nel repo (vedi `.gitignore`):
+Stanno in `dati/`, che resta sul tuo computer e non finisce nel repo:
 
-- `capi/NNN-nome.md`: un file per capo, il formato è descritto in `CLAUDE.md`;
-- `foto/NNN.webp`: foto calibrate dei capi;
-- `outfit.md`: outfit approvati, una riga per outfit, `- [001, 069, 051]`;
-- `profilo.md` (facoltativo): con `pelle: "#rrggbb"` nel frontmatter gli outfit tengono conto
+```
+dati/
+  capi/NNN-nome.md   un file per capo (formato in CLAUDE.md)
+  foto/NNN.webp      foto calibrate dei capi
+  outfit.md          outfit approvati, una riga per outfit: - [001, 069, 051]
+  profilo.md         facoltativo
+```
+
+In `profilo.md`: con `pelle: "#rrggbb"` nel frontmatter gli outfit tengono conto
   anche di quanto i colori vicino al viso stanno bene con la tua pelle.
 
 ```yaml
@@ -41,19 +55,19 @@ Le regole sulla pelle oggi sono pensate per un sottotono caldo con contrasto alt
 
 ## Foto calibrate
 
-Stampa due volte `tools/griglia_grigi.pdf` (A4 al 100%), mettile ai lati del capo e fotografa con luce
+Stampa due volte `strumenti/griglia_grigi.pdf` (A4 al 100%), mettile ai lati del capo e fotografa con luce
 diurna. Poi:
 
 ```sh
 .venv/bin/pip install -r requirements-foto.txt   # una volta (scontorno con rembg)
-.venv/bin/python tools/foto.py ~/Downloads/IMG.jpg 001
+.venv/bin/python strumenti/foto.py ~/Downloads/IMG.jpg 001
 ```
 
-Stampa l'hex del capo e salva `foto/001.webp`.
+Stampa l'hex del capo e salva `dati/foto/001.webp`.
 
 ## Test
 
 ```sh
-node --test web/
-cd tools && ../.venv/bin/python test_web.py && ../.venv/bin/python test_foto_web.py
+node --test sito/*.test.mjs
+cd strumenti && ../.venv/bin/python test_server.py && ../.venv/bin/python test_foto_web.py
 ```

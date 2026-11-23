@@ -1,6 +1,6 @@
-"""foto.py IN.jpg NNN -> foto/NNN.webp (calibrata sui fogli grigi, ritagliata su grigio) + stampa hex.
-Uso: .venv/bin/python tools/foto.py ~/Downloads/IMG.jpg 042 [modello soglia]
-Fogli: tools/griglia_grigi.pdf (2x2: 10/18/50/80%), uno per lato del capo.
+"""foto.py IN.jpg NNN -> dati/foto/NNN.webp (calibrata sui fogli grigi, ritagliata su grigio) + stampa hex.
+Uso: .venv/bin/python strumenti/foto.py ~/Downloads/IMG.jpg 042 [modello soglia]
+Fogli: strumenti/griglia_grigi.pdf (2x2: 10/18/50/80%), uno per lato del capo.
 """
 import os
 import sys
@@ -14,6 +14,7 @@ TARGET = 235          # il bianco del foglio diventa questo grigio (non 255: non
 BG = (235, 235, 236)  # sfondo finale, grigio e-commerce
 MAXSIDE = 800
 ROOT = Path(__file__).resolve().parent.parent
+DATI = ROOT / "dati"  # dati personali: capi/, foto/, profilo.md, outfit.md
 
 
 def _lin(a):  # sRGB 0-1 -> lineare
@@ -154,7 +155,7 @@ def main(src, nnn, model=None, thr=128):
     pad = int(0.06 * max(out.size))
     out = ImageOps.expand(out, pad, fill=BG)
     out.thumbnail((MAXSIDE, MAXSIDE))
-    dst = ROOT / "foto" / f"{nnn}.webp"
+    dst = DATI / "foto" / f"{nnn}.webp"
     out.save(dst, quality=78, method=6)
     print(f"{dst} {dst.stat().st_size // 1024}KB hex={median_hex(cal, keep)}")
     print("palette:", palette(cal, keep))
