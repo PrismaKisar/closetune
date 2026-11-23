@@ -1,7 +1,7 @@
 // node --test web/
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import * as m from "./match.js";
+import * as m from "./abbinamenti.js";
 
 m.impostaPelle("#ddb095");
 

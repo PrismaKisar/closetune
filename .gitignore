@@ -1,11 +1,6 @@
 # dati personali: restano solo sul proprio computer
-capi/
-foto/
-profilo.md
-outfit.md
-reports/
-research_notes/
-tmp/
+dati/
+ricerca/
 # ambiente e strumenti locali
 .venv/
 __pycache__/

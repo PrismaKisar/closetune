@@ -1,4 +1,4 @@
-"""cinture.py IN.jpg NNN [cm] -> foto/NNN.webp: una cintura (foto singola, fogli grigi accanto), fibbia in alto,
+"""cinture.py IN.jpg NNN [cm] -> dati/foto/NNN.webp: una cintura (foto singola, fogli grigi accanto), fibbia in alto,
 raddrizzata e tagliata a `cm` cm dalla cima della fibbia (default 22), sfondo tolto (rembg sul ritaglio) e messo sul grigio di default.
 Cinta stretta e scura su asciugamano: niente rembg, si segmenta per scarto dal colore dello sfondo."""
 import sys
@@ -7,7 +7,7 @@ import numpy as np
 from PIL import Image, ImageOps
 from scipy import ndimage as ndi
 
-from foto import BG, ROOT, calibrate, cutout, find_sheets
+from foto import BG, DATI, calibrate, cutout, find_sheets
 
 MAXSIDE = 1600   # cinte strette: più risoluzione del default per non sgranare
 
@@ -34,7 +34,7 @@ def finalizza(out, nnn):
     ys, xs = np.nonzero(keep)
     comp = ImageOps.expand(comp.crop((xs.min(), ys.min(), xs.max() + 1, ys.max() + 1)), int(0.05 * max(np.ptp(xs), np.ptp(ys))), fill=BG)
     comp.thumbnail((MAXSIDE, MAXSIDE))
-    dst = ROOT / "foto" / f"{nnn}.webp"
+    dst = DATI / "foto" / f"{nnn}.webp"
     comp.save(dst, quality=90, method=6)
     body = ndi.binary_erosion(keep, iterations=6)
     body[: int(.4 * body.shape[0])] = False                                   # senza fibbia
