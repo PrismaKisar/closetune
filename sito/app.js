@@ -3,6 +3,7 @@ import { FAMIGLIE, NOMI_SLOT, RELAZIONI, TIPI, delGiorno, filtra, giudizio, giud
 const STAGIONI = ["primavera", "estate", "autunno", "inverno"];
 const OCCASIONI = ["casual", "smart-casual", "elegante", "sportivo", "outdoor"];
 const RUOLO = { mid: "Sopra", base: "Sotto", bottom: "Pantaloni", shoes: "Scarpe", belt: "Cintura" };
+const ETICHETTA_STATO = { dismesso: "dismesso", casa: "da casa" };
 const ORDINE = { mid: 0, base: 1, bottom: 2, shoes: 3, belt: 4 };
 // tinta rappresentativa di ogni famiglia, per i campioni dei filtri
 const TINTA = { chiari: "#efeadb", scuri: "#1e1e20", grigi: "#8d8f91", terra: "#b99a6b", gialli: "#d8aa44", verdi: "#5f7d55", blu: "#2d4a6e", rossi: "#a83a32", rosa: "#c99a95" };
@@ -30,12 +31,12 @@ function visuale(c, grande = false) {
 }
 
 function carta(c) {
-  return `<li><a class="capo${c.stato === "dismesso" ? " spento" : ""}" href="#capo/${esc(c.id)}">
+  return `<li><a class="capo${c.stato !== "attivo" ? " spento" : ""}" href="#capo/${esc(c.id)}">
     <div class="cornice">${visuale(c)}<span class="id" aria-label="numero ${esc(c.id)}">${esc(c.id)}</span></div>
     <div class="capo-testo">
       <span class="marca">${esc(marca(c) || "Senza marca")}</span>
       <span class="nome">${esc(cap(c.categoria))}</span>
-      <span class="colore"><i style="--c:${esc(c.hex)}"></i>${esc(c.nomeColore)}${c.stato === "dismesso" ? ' <em>dismesso</em>' : ""}</span>
+      <span class="colore"><i style="--c:${esc(c.hex)}"></i>${esc(c.nomeColore)}${c.stato !== "attivo" ? ` <em>${ETICHETTA_STATO[c.stato] ?? esc(c.stato)}</em>` : ""}</span>
     </div>
   </a></li>`;
 }
@@ -69,7 +70,7 @@ function aggiornaArmadio() {
   const { f } = st;
   const base = filtra(st.capi, { stato: f.stato });
   const conta = (k, v) => base.filter((c) => (Array.isArray(c[k]) ? c[k].includes(v) : c[k] === v)).length;
-  $("#f-stato").innerHTML = [["attivo", "Attivi"], ["dismesso", "Dismessi"], ["tutti", "Tutti"]]
+  $("#f-stato").innerHTML = [["attivo", "Attivi"], ["casa", "Da casa"], ["dismesso", "Dismessi"], ["tutti", "Tutti"]]
     .map(([v, t]) => `<button type="button" data-stato="${v}" aria-pressed="${f.stato === v}">${t}</button>`).join("");
   $("#f-ruoli").innerHTML = ["mid", "base", "bottom"].map((v) => {
     const n = conta("slot", v);
@@ -201,20 +202,21 @@ function vistaDettaglio(c) {
       <dl class="info">${righe.map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`).join("")}</dl>
       ${c.note ? `<p class="note">${esc(c.note)}</p>` : ""}
       <div class="azioni-capo">
-        ${c.stato === "dismesso"
-          ? `<button type="button" class="btn-stato riattiva" data-cambia-stato="attivo">Rimetti tra gli attivi</button>`
-          : `<button type="button" class="btn-stato" data-cambia-stato="dismesso">Segna come dismesso</button>`}
+        ${c.stato === "attivo"
+          ? `<button type="button" class="btn-stato" data-cambia-stato="casa">Segna da casa</button><button type="button" class="btn-stato" data-cambia-stato="dismesso">Segna come dismesso</button>`
+          : `<button type="button" class="btn-stato riattiva" data-cambia-stato="attivo">Rimetti tra gli attivi</button>`}
         <p class="esito" role="status"></p>
       </div>
     </section>
     <section class="abbinamenti" aria-labelledby="titolo-abb">
       <div class="abb-testa">
         <h2 id="titolo-abb">Con cosa lo metto</h2>
-        <div class="seg piccolo" role="group" aria-label="Suggerisci da">
+        <div class="seg piccolo" role="group" aria-label="Suggerisci da"${c.stato === "casa" ? " hidden" : ""}>
           <button type="button" data-pool="attivo" aria-pressed="${st.pool === "attivo"}">Solo attivi</button>
           <button type="button" data-pool="tutti" aria-pressed="${st.pool === "tutti"}">Anche dismessi</button>
         </div>
       </div>
+      ${c.stato === "casa" ? `<p class="avviso">Capo da casa: è censito ma non entra negli abbinamenti.</p>` : ""}
       ${mancanti.length ? `<p class="avviso">Nessun capo ${st.pool === "attivo" ? "attivo " : ""}adatto tra: <b>${esc(nomiMancanti)}</b>.${st.pool === "attivo" ? ' <button type="button" class="link" data-pool="tutti">Cerca anche tra i dismessi</button>' : ""}</p>` : ""}
       ${approvati.length ? `<div class="approvati"><h3>Già approvati</h3><ul>${approvati.map((o) => `<li>${o.map((p) => `<a href="#capo/${esc(p.id)}" title="${esc(cap(p.categoria))} ${esc(p.colore)}"><i style="--c:${esc(p.hex)}"></i>${esc(cap(p.categoria))}${marca(p) ? ` <span>${esc(marca(p))}</span>` : ""}</a>`).join("")}</li>`).join("")}</ul></div>` : ""}
       ${proposti.length ? `<p class="n-abb" aria-live="polite">${proposti.length} ${proposti.length === 1 ? "abbinamento" : "abbinamenti"}, dal migliore</p>` : ""}
@@ -321,7 +323,7 @@ async function cambiaStato(btn) {
     const y = window.scrollY;
     vistaDettaglio(c);
     window.scrollTo(0, y);
-    $(".esito").textContent = stato === "dismesso" ? "Segnato come dismesso." : "Di nuovo tra gli attivi.";
+    $(".esito").textContent = { dismesso: "Segnato come dismesso.", casa: "Segnato da casa: non entra negli abbinamenti.", attivo: "Di nuovo tra gli attivi." }[stato];
     $("[data-cambia-stato]").focus();
   } catch {
     btn.disabled = false;

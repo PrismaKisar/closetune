@@ -55,7 +55,7 @@ class TestParser(unittest.TestCase):
         self.assertEqual(len(d["capi"]), len(list((server.DATI / "capi").glob("*.md"))))
         for c in d["capi"]:
             self.assertRegex(c["hex"], r"^#[0-9a-fA-F]{6}$", c["id"])
-            self.assertIn(c["stato"], ("attivo", "dismesso"), c["id"])
+            self.assertIn(c["stato"], server.STATI, c["id"])
 
 
 class TestServer(unittest.TestCase):
@@ -149,6 +149,8 @@ class TestStato(unittest.TestCase):
         self.assertIn("Note con stato: attivo nel testo", self.file.read_text())
         self.assertTrue(server.imposta_stato("042", "attivo", self.root))
         self.assertEqual(self.file.read_text(), CAPO_STATO)
+        self.assertTrue(server.imposta_stato("042", "casa", self.root))
+        self.assertIn("stato: casa\n---", self.file.read_text())
 
     def test_id_sconosciuto_e_stato_non_valido(self):
         self.assertFalse(server.imposta_stato("999", "dismesso", self.root))
