@@ -1,4 +1,4 @@
-import { FAMIGLIE, NOMI_SLOT, RELAZIONI, TIPI, delGiorno, filtra, giudizio, giudizioPelle, impostaPelle, outfit, percentuale, prepara } from "./abbinamenti.js";
+import { FAMIGLIE, NOMI_SLOT, RELAZIONI, TIPI, delGiorno, filtra, giudizio, giudizioPelle, impostaPelle, ordineArcobaleno, outfit, percentuale, prepara } from "./abbinamenti.js";
 
 const STAGIONI = ["primavera", "estate", "autunno", "inverno"];
 const OCCASIONI = ["casual", "smart-casual", "elegante", "sportivo", "outdoor"];
@@ -59,7 +59,7 @@ function vistaArmadio() {
       <button type="button" class="btn mostra" id="mostra" data-chiudi></button>
     </aside>
     <section class="vetrina" aria-labelledby="titolo-vetrina">
-      <div class="vetrina-testa"><h1 id="titolo-vetrina">Il mio armadio</h1><p id="n-risultati" aria-live="polite"></p></div>
+      <div class="vetrina-testa"><h1 id="titolo-vetrina">Il mio armadio</h1><a class="btn-arcobaleno" href="#arcobaleno" title="Ordine per l'armadio" aria-label="Ordine per l'armadio"></a><p id="n-risultati" aria-live="polite"></p></div>
       <ul class="griglia" id="griglia"></ul>
     </section>
   </div>`;
@@ -244,16 +244,30 @@ function vistaOggi() {
   </div>`;
 }
 
+function vistaArcobaleno() {
+  const capi = ordineArcobaleno(st.capi);
+  main.innerHTML = `<div class="oggi">
+    <a class="indietro" href="#">Tutti i capi</a>
+    <div class="oggi-testa"><div><p class="marca">${capi.length} capi sopra · dal primo all'ultimo</p><h1>Ordine per l'armadio</h1></div></div>
+    <ol class="griglia">${capi.map(carta).join("")}</ol>
+  </div>`;
+}
+
 // ---------- router ed eventi ----------
 function render() {
   osservatore?.disconnect();
   const m = location.hash.match(/^#capo\/(\w+)/);
   const c = m && st.capi.find((x) => x.id === m[1]);
   const oggi = location.hash === "#oggi";
-  document.body.classList.toggle("in-dettaglio", !!c || oggi);
+  const arcobaleno = location.hash === "#arcobaleno";
+  document.body.classList.toggle("in-dettaglio", !!c || oggi || arcobaleno);
   document.body.classList.remove("filtri-aperti");
   $("#vai-oggi").toggleAttribute("aria-current", oggi);
-  if (oggi) {
+  if (arcobaleno) {
+    vistaArcobaleno();
+    document.title = "Ordine per l'armadio · closetune";
+    window.scrollTo(0, 0);
+  } else if (oggi) {
     vistaOggi();
     document.title = "Outfit di oggi · closetune";
     window.scrollTo(0, 0);

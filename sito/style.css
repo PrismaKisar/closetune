@@ -363,3 +363,12 @@ h1, h2, h3 { margin: 0; font-weight: 400; }
   .outfit-testa .pelle { order: 2; margin: 0; }
   .outfit-testa .armonia { order: 3; margin-left: auto; }
 }
+
+/* ---------- ordine arcobaleno ---------- */
+.btn-arcobaleno {
+  width: 22px; height: 22px; border-radius: 50%; flex: none; align-self: center; margin-right: auto;
+  background: conic-gradient(#e6e7dd, #e6d78e, #d8aa44, #846d4f, #cdb3b1, #95bed5, #254059, #2a322e, #222422, #e6e7dd);
+  box-shadow: 0 0 0 1px var(--line); transition: transform .15s var(--ease);
+}
+.btn-arcobaleno:hover { transform: scale(1.12); }
+.btn-arcobaleno:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }

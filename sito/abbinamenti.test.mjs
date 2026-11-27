@@ -341,3 +341,14 @@ test("i capi da casa non entrano negli abbinamenti", () => {
   assert.deepEqual(m.filtra(capi, { stato: "casa" }).map((c) => c.id), ["4"]);
   assert.ok(!m.filtra(capi, { stato: "attivo" }).some((c) => c.id === "4"));
 });
+
+test("ordine arcobaleno: solo sopra, bianchi → caldi → blu → verdi → neri", () => {
+  const capi = m.prepara([
+    capo("n", "t-shirt", "#222422"), capo("v", "maglione", "#2a322e"), capo("w2", "camicia", "#bcc7c5"), capo("b2", "maglione", "#254059"),
+    capo("b1", "camicia", "#95bed5"), capo("m", "felpa", "#846d4f"), capo("g", "maglione", "#e6d78e"),
+    capo("p", "maglione", "#e2dfc6"), capo("w", "camicia", "#e6e7dd"), capo("r", "maglione", "#cdb3b1"),
+    capo("j", "jeans", "#e6e7dd"), capo("x", "t-shirt", "#ffffff", { stato: "dismesso" }),
+    capo("k", "pile", "#141a20", { stato: "casa" }),
+  ]);
+  assert.deepEqual(m.ordineArcobaleno(capi).map((c) => c.id), ["w2", "w", "p", "g", "m", "r", "b1", "b2", "k", "v", "n"]);
+});

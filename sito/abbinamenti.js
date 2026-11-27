@@ -376,3 +376,21 @@ export function delGiorno(pool, data = new Date(), giro = 0, approvati = []) {
   const { outfit: migliori } = outfit(scelto, adatti, { n: 3, approvati });
   return { stagione, scelto, outfit: migliori[Math.floor(r() * migliori.length)] ?? null };
 }
+
+// ---------- ordine arcobaleno ----------
+/** Capi sopra (base e strato), attivi e da casa, nell'ordine in cui appenderli:
+ * bianchi → panna/beige → caldi (beige, giallo, senape, marrone, rosa) → blu dal chiaro allo scuro → verdi → neri. */
+export function ordineArcobaleno(capi) {
+  const gruppo = ({ L, C, h }) =>
+    C < 0.008 ? 4 : L > 0.8 && (C < 0.014 || (h > 60 && h < 130 && C < 0.045)) ? 0 : h < 130 || h >= 290 ? 1 : h < 200 ? 3 : 2;
+  // nei caldi la tinta scende da beige/giallo a rosa (viola = tinta negativa, dopo il rosa)
+  const chiave = (c) => {
+    const g = gruppo(c.lch);
+    return [g, g === 0 ? c.lch.C : g === 1 ? -(c.lch.h >= 290 ? c.lch.h - 360 : c.lch.h) : -c.lch.L];
+  };
+  return capi
+    .filter((c) => (c.slot === "base" || c.slot === "mid") && (c.stato === "attivo" || c.stato === "casa"))
+    .map((c) => [chiave(c), c])
+    .sort(([a], [b]) => a[0] - b[0] || a[1] - b[1])
+    .map(([, c]) => c);
+}
