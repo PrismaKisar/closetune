@@ -1,4 +1,4 @@
-import { FAMIGLIE, NOMI_SLOT, RELAZIONI, TIPI, delGiorno, filtra, giudizio, giudizioPelle, impostaPelle, ordineArcobaleno, outfit, percentuale, prepara } from "./abbinamenti.js";
+import { FAMIGLIE, NOMI_SLOT, RELAZIONI, TIPI, delGiorno, filtra, giudizio, giudizioPelle, impostaPelle, ordineArcobaleno, outfit, outfitDa, percentuale, prepara } from "./abbinamenti.js";
 
 const STAGIONI = ["primavera", "estate", "autunno", "inverno"];
 const OCCASIONI = ["casual", "smart-casual", "elegante", "sportivo", "outdoor"];
@@ -135,7 +135,7 @@ function striscia(pezzi) {
   return `<div class="striscia" aria-hidden="true">${pezzi.map((p) => `<span style="--c:${esc(p.hex)};flex-grow:${p.slot === "base" && conMid ? 9 : PESO_STRISCIA[p.slot]}"></span>`).join("")}</div>`;
 }
 
-function schedaOutfit(o, i, scelto, inGruppo = i) {
+function schedaOutfit(o, i, scelto, inGruppo = i, fissi = [scelto]) {
   const pezzi = [...o.pezzi].sort((a, b) => ORDINE[a.slot] - ORDINE[b.slot]);
   const titolo = RELAZIONI[o.perche[0]?.tipo]?.nome ?? "Abbinamento";
   const voto = Math.round(o.punteggio * 100);
@@ -147,7 +147,7 @@ function schedaOutfit(o, i, scelto, inGruppo = i) {
       <span class="armonia" title="Armonia ${voto} su 100"><span class="armonia-barra" aria-hidden="true"><i style="width:${voto}%"></i></span><b>${giudizio(o.punteggio)}</b></span>
     </header>
     <div class="outfit-corpo">
-      <ul class="pezzi" style="--n:${pezzi.length}">${pezzi.map((p) => `<li><a class="pezzo${p === scelto ? " attuale" : ""}" href="#capo/${esc(p.id)}"${p === scelto ? ' aria-current="true"' : ""}>
+      <ul class="pezzi" style="--n:${pezzi.length}">${pezzi.map((p) => `<li><a class="pezzo${fissi.includes(p) ? " attuale" : ""}" href="#capo/${esc(p.id)}"${fissi.includes(p) ? ' aria-current="true"' : ""}>
         <div class="cornice">${visuale(p)}<span class="id" aria-label="numero ${esc(p.id)}">${esc(p.id)}</span></div>
         <span class="ruolo">${RUOLO[p.slot]}</span>
         <span class="pezzo-nome">${esc(marca(p) || cap(p.categoria))}</span>
@@ -168,9 +168,9 @@ let lista = { outfit: [], scelto: null, mostrati: 0 };
 let osservatore = null;
 
 function altriOutfit() {
-  const { outfit: tutti, scelto, mostrati } = lista;
+  const { outfit: tutti, scelto, mostrati, fissi = [scelto] } = lista;
   const nuovi = tutti.slice(mostrati, mostrati + PASSO);
-  $("#lista-outfit").insertAdjacentHTML("beforeend", nuovi.map((o, i) => schedaOutfit(o, mostrati + i, scelto, i)).join(""));
+  $("#lista-outfit").insertAdjacentHTML("beforeend", nuovi.map((o, i) => schedaOutfit(o, mostrati + i, scelto, i, fissi)).join(""));
   lista.mostrati += nuovi.length;
   const restano = tutti.length - lista.mostrati;
   const btn = $("#altri");
@@ -253,6 +253,54 @@ function vistaArcobaleno() {
   </div>`;
 }
 
+// ---------- outfit builder: scegli i capi, completa il resto ----------
+const fissiDaHash = () => (location.hash.match(/^#crea\/([\w,]+)/)?.[1].split(",") ?? [])
+  .map((id) => st.capi.find((c) => c.id === id)).filter(Boolean);
+
+function vistaCrea() {
+  const fissi = fissiDaHash();
+  const scegli = filtra(st.capi, { stato: "attivo" });
+  main.innerHTML = `<div class="oggi crea">
+    <a class="indietro" href="#">Tutti i capi</a>
+    <div class="oggi-testa"><div><p class="marca">Uno per tipo · il resto lo scelgo io</p><h1>Crea outfit</h1></div>
+      <button type="button" class="btn" id="svuota"${fissi.length ? "" : " hidden"}>Ricomincia</button></div>
+    ${["mid", "base", "bottom", "shoes", "belt"].map((s) => `<div class="scelta">
+      <h3>${RUOLO[s]}</h3>
+      <ul>${scegli.filter((c) => c.slot === s).sort((a, b) => b.lch.L - a.lch.L).map((c) => `<li><button type="button" class="pezzo" data-fisso="${esc(c.id)}" aria-pressed="${fissi.includes(c)}" title="${esc(cap(c.categoria))} ${esc(c.colore)}${marca(c) ? ", " + esc(marca(c)) : ""}">
+        <div class="cornice">${visuale(c)}<span class="id">${esc(c.id)}</span></div></button></li>`).join("")}</ul>
+    </div>`).join("")}
+    <div id="risultati-crea"></div>
+  </div>`;
+  risultatiCrea();
+}
+
+function risultatiCrea() {
+  osservatore?.disconnect();
+  const fissi = fissiDaHash();
+  const box = $("#risultati-crea");
+  if (!fissi.length) { box.innerHTML = `<p class="avviso">Tocca uno o più capi qui sopra: ti propongo gli outfit, dal migliore.</p>`; return; }
+  const { outfit: proposti, mancanti } = outfitDa(fissi, filtra(st.capi, { stato: "attivo" }), { approvati: st.approvati });
+  box.innerHTML = `${mancanti.length ? `<p class="avviso">Nessun capo adatto tra: <b>${esc(mancanti.map((s) => NOMI_SLOT[s]).join(", "))}</b>.</p>` : ""}
+    <p class="n-abb" aria-live="polite">${proposti.length ? `${proposti.length} outfit, dal migliore` : "Questi capi non stanno insieme: stagione o formalità troppo diverse."}</p>
+    <div id="lista-outfit"></div>
+    <button type="button" class="btn altri" id="altri" hidden></button>`;
+  lista = { outfit: proposti, scelto: fissi[0], fissi, mostrati: 0 };
+  altriOutfit();
+  osservatore = new IntersectionObserver((e) => e[0].isIntersecting && altriOutfit(), { rootMargin: "800px 0px" });
+  osservatore.observe($("#altri"));
+}
+
+// un capo per strato: sceglierne un altro dello stesso strato lo sostituisce
+function toggleFisso(id) {
+  const c = st.capi.find((x) => x.id === id);
+  let fissi = fissiDaHash();
+  fissi = fissi.includes(c) ? fissi.filter((f) => f !== c) : [...fissi.filter((f) => f.slot !== c.slot), c];
+  history.replaceState(null, "", fissi.length ? `#crea/${fissi.map((f) => f.id).join(",")}` : "#crea");
+  document.querySelectorAll("[data-fisso]").forEach((b) => b.setAttribute("aria-pressed", fissi.some((f) => f.id === b.dataset.fisso)));
+  $("#svuota").hidden = !fissi.length;
+  risultatiCrea();
+}
+
 // ---------- router ed eventi ----------
 function render() {
   osservatore?.disconnect();
@@ -260,10 +308,16 @@ function render() {
   const c = m && st.capi.find((x) => x.id === m[1]);
   const oggi = location.hash === "#oggi";
   const arcobaleno = location.hash === "#arcobaleno";
-  document.body.classList.toggle("in-dettaglio", !!c || oggi || arcobaleno);
+  const crea = location.hash.startsWith("#crea");
+  document.body.classList.toggle("in-dettaglio", !!c || oggi || arcobaleno || crea);
+  $("#vai-crea").toggleAttribute("aria-current", crea);
   document.body.classList.remove("filtri-aperti");
   $("#vai-oggi").toggleAttribute("aria-current", oggi);
-  if (arcobaleno) {
+  if (crea) {
+    vistaCrea();
+    document.title = "Crea outfit · closetune";
+    window.scrollTo(0, 0);
+  } else if (arcobaleno) {
     vistaArcobaleno();
     document.title = "Ordine per l'armadio · closetune";
     window.scrollTo(0, 0);
@@ -301,6 +355,8 @@ document.addEventListener("click", (e) => {
   } else if (t.dataset.cambiaStato) cambiaStato(t);
   else if (t.dataset.pool) { st.pool = t.dataset.pool; render(); }
   else if (t.id === "altri") altriOutfit();
+  else if (t.dataset.fisso) toggleFisso(t.dataset.fisso);
+  else if (t.id === "svuota") { history.replaceState(null, "", "#crea"); vistaCrea(); }
   else if (t.id === "rimescola") { st.giro++; vistaOggi(); }
   else if (t.id === "apri-filtri" || t.dataset.chiudi !== undefined) {
     const aperto = document.body.classList.toggle("filtri-aperti");
@@ -317,7 +373,7 @@ document.addEventListener("keydown", (e) => {
 
 $("#cerca").addEventListener("input", (e) => {
   st.f.testo = e.target.value;
-  if (location.hash.startsWith("#capo/") || location.hash === "#oggi") location.hash = "";
+  if (location.hash.startsWith("#capo/") || location.hash === "#oggi" || location.hash.startsWith("#crea") || location.hash === "#arcobaleno") location.hash = "";
   else aggiornaArmadio();
 });
 

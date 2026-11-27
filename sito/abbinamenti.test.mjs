@@ -352,3 +352,24 @@ test("ordine arcobaleno: solo sopra, bianchi → caldi → blu → verdi → ner
   ]);
   assert.deepEqual(m.ordineArcobaleno(capi).map((c) => c.id), ["w2", "w", "p", "g", "m", "r", "b1", "b2", "k", "v", "n"]);
 });
+
+test("outfit builder: più capi fissati, completa solo gli strati liberi", () => {
+  const capi = m.prepara([
+    capo("t", "t-shirt", "#f1f1ed"), capo("t2", "t-shirt", "#191d1f"), capo("f", "felpa", "#1f2a44"),
+    capo("j", "jeans", "#33424d"), capo("j2", "jeans", "#dce1d4"), capo("s", "sneaker", "#f1f1ed"),
+    capo("c", "cintura", "#3b3530"),
+  ]);
+  const [t, , f, j] = capi;
+  const { outfit: o } = m.outfitDa([t, j], capi);
+  assert.ok(o.length > 0);
+  for (const x of o) {
+    assert.ok(x.pezzi.includes(t) && x.pezzi.includes(j));
+    assert.equal(new Set(x.pezzi.map((p) => p.slot)).size, x.pezzi.length); // uno per strato
+  }
+  for (let i = 1; i < o.length; i++) assert.ok(o[i - 1].punteggio >= o[i].punteggio - 0.5);
+  // due capi nello stesso strato non stanno insieme
+  assert.equal(m.outfitDa([t, capi[1]], capi).doppi, true);
+  // tutti gli strati fissati: un solo outfit, quello
+  assert.equal(m.outfitDa(capi.filter((c) => c.id !== "t2" && c.id !== "j2"), capi).outfit.length, 1);
+  assert.deepEqual(m.outfitDa([f], capi).outfit[0].pezzi.length, m.outfit(f, capi).outfit[0].pezzi.length);
+});

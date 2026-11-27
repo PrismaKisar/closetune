@@ -250,17 +250,25 @@ export const NOMI_SLOT = { base: "t-shirt, polo o camicia", mid: "felpa, pile o 
 
 /** Gli outfit attorno al capo scelto, presi da `pool` (già filtrato per stato): tutte le combinazioni
  * dei `perSlot` capi migliori per ruolo, dal migliore in giù, alternando i pezzi per non ripetersi. */
-export function outfit(scelto, pool, { n = Infinity, approvati = [], perSlot = 6 } = {}) {
+export function outfit(scelto, pool, opzioni = {}) {
+  return outfitDa([scelto], pool, opzioni);
+}
+
+/** Come `outfit`, ma attorno a più capi fissati (l'outfit builder): uno per strato, il resto si completa. */
+export function outfitDa(fissi, pool, { n = Infinity, approvati = [], perSlot = 6 } = {}) {
+  const scelto = fissi[0];
   // i capi da casa (stato: casa) sono censiti ma non entrano mai negli abbinamenti
-  if (scelto.stato === "casa") return { outfit: [], mancanti: [] };
+  if (!scelto || fissi.some((f) => f.stato === "casa")) return { outfit: [], mancanti: [] };
+  const occupati = fissi.map((f) => f.slot);
+  if (new Set(occupati).size < occupati.length) return { outfit: [], mancanti: [], doppi: true };
   pool = pool.filter((c) => c.stato !== "casa");
-  const servono = ["base", "mid", "bottom", "shoes", "belt"].filter((s) => s !== scelto.slot);
+  const servono = ["base", "mid", "bottom", "shoes", "belt"].filter((s) => !occupati.includes(s));
   const candidati = {};
   const mancanti = [];
   for (const s of servono) {
     const lista = pool
-      .filter((c) => c.slot === s && c.id !== scelto.id && sovrapponeStagione(scelto, c) && distanzaFormale([scelto, c]) <= 1)
-      .map((c) => ({ c, p: punteggioOutfit([scelto, c], approvati) }))
+      .filter((c) => c.slot === s && fissi.every((f) => sovrapponeStagione(f, c)) && distanzaFormale([...fissi, c]) <= 1)
+      .map((c) => ({ c, p: punteggioOutfit([...fissi, c], approvati) }))
       .sort((a, b) => b.p - a.p)
       .slice(0, perSlot)
       .map((x) => x.c);
@@ -268,7 +276,7 @@ export function outfit(scelto, pool, { n = Infinity, approvati = [], perSlot = 6
     else mancanti.push(s);
   }
   // ponytail: perSlot^4 combinazioni (1296 con 6), ordinamento O(n²); alzare perSlot solo con un ordinamento più furbo
-  let combo = [[scelto]];
+  let combo = [fissi];
   for (const s of Object.keys(candidati)) combo = combo.flatMap((pz) => candidati[s].map((c) => [...pz, c]));
   if (combo.length === 1 && combo[0].length === 1) return { outfit: [], mancanti };
   const restanti = combo.filter(stagioneComune).map((pezzi) => ({ pezzi, punteggio: punteggioOutfit(pezzi, approvati) }));
@@ -279,7 +287,7 @@ export function outfit(scelto, pool, { n = Infinity, approvati = [], perSlot = 6
   while (scelti.length < n && restanti.length) {
     let iMigliore = 0, best = -Infinity;
     restanti.forEach((v, i) => {
-      const ripetuti = v.pezzi.reduce((k, p) => k + (p === scelto ? 0 : uso.get(p.id) ?? 0), 0);
+      const ripetuti = v.pezzi.reduce((k, p) => k + (fissi.includes(p) ? 0 : uso.get(p.id) ?? 0), 0);
       const s = v.punteggio - 0.08 * ripetuti;
       if (s > best) [best, iMigliore] = [s, i];
     });

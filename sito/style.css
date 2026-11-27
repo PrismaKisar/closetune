@@ -388,3 +388,24 @@ h1, h2, h3 { margin: 0; font-weight: 400; }
   .arcobaleno .capo-testo .nome, .arcobaleno .capo-testo .colore { display: none; }
   .arcobaleno .capo-testo .marca { font-size: 10px; }
 }
+
+/* ---------- outfit builder ---------- */
+.btn-crea { background: transparent; color: var(--ink); box-shadow: inset 0 0 0 1px var(--line); }
+.btn-crea:hover { background: var(--surface); }
+.btn-crea[aria-current] { background: var(--ink); color: var(--bg); box-shadow: none; }
+.scelta { margin: 0 0 22px; }
+.scelta h3 { font: 600 11px/1.3 var(--sans); letter-spacing: .09em; text-transform: uppercase; color: var(--muted); margin: 0 0 10px; }
+.scelta ul { list-style: none; margin: 0; padding: 4px; display: flex; flex-wrap: wrap; gap: 10px; }
+.scelta li { flex: none; width: 96px; scroll-snap-align: start; }
+.scelta button { width: 100%; padding: 0; border: 0; background: none; cursor: pointer; }
+.scelta .cornice { margin: 0; border-radius: 12px; transition: box-shadow .2s var(--ease), transform .2s var(--ease); }
+.scelta .cornice .id { top: 5px; right: 5px; padding: 2px 5px; font-size: 10px; }
+.scelta button[aria-pressed="true"] .cornice { box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--ink); }
+.scelta button:active .cornice { transform: scale(.96); }
+.scelta button:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; border-radius: 12px; }
+#risultati-crea { margin-top: 28px; }
+@media (max-width: 600px) {
+  /* su telefono ogni tipo è una riga che scorre di lato */
+  .scelta ul { flex-wrap: nowrap; margin: 0 calc(-1 * var(--gutter)); padding: 4px var(--gutter) 8px; overflow-x: auto; scroll-snap-type: x proximity; scrollbar-width: none; }
+  .scelta li { width: 84px; }
+}
