@@ -82,8 +82,11 @@ test("relazioni cromatiche", () => {
     capo("a", "t-shirt", "#191d1f"), capo("b", "maglione", "#d8aa44"), capo("c", "pantalone", "#1f2a44"),
     capo("d", "pantalone", "#1f4e5a"), capo("e", "camicia", "#f1f1ed"), capo("f", "jeans", "#2c3e5c"),
   ]);
-  assert.equal(m.relazione(senape, navy), "complementari");
-  assert.equal(m.relazione(navy, petrolio), "analoghi");
+  assert.equal(m.relazione(senape, navy), "neutro+colore", "il navy fa da neutro");
+  assert.equal(m.relazione(senape, m.prepara([capo("z", "pantalone", "#3b5bb0")])[0]), "complementari");
+  assert.equal(m.relazione(navy, petrolio), "neutro+colore");
+  const [blu, celeste] = m.prepara([capo("y1", "maglione", "#3b5bb0"), capo("y2", "pantalone", "#2f8fb8")]);
+  assert.equal(m.relazione(blu, celeste), "analoghi");
   assert.equal(m.relazione(nero, senape), "neutro+colore");
   assert.equal(m.relazione(nero, bianco), "neutri");
   assert.ok(jeans.neutro, "il denim conta come neutro");
@@ -137,9 +140,9 @@ test("outfit: uno per slot, niente doppioni, stagione e formalità rispettate", 
   }
   const chiavi = outfit.map((o) => o.pezzi.map((p) => p.id).join());
   assert.equal(new Set(chiavi).size, 3, "tre outfit diversi");
-  // i blu (navy complementare, denim neutro) battono il giallo grano tono su tono
+  // i blu (navy e denim, neutri) battono il giallo grano tono su tono
   assert.ok(m.coppia(top, capi[1]).punteggio > m.coppia(top, capi[3]).punteggio);
-  assert.ok(outfit.some((o) => o.perche[0].tipo === "complementari"));
+  assert.ok(outfit.some((o) => o.perche[0].tipo === "neutro+colore"));
 });
 
 test("outfit: cintura in tinta con scarpe non sneaker", () => {
@@ -241,7 +244,7 @@ test("outfit: perSlot limita i candidati per ruolo", () => {
 
 test("motivazioni strati: chi è il neutro", () => {
   const [panna, oliva, nero] = m.prepara([
-    capo("m", "maglione", "#e2dfc6"), capo("o", "polo", "#6b6b3a", { colore: "verde oliva" }), capo("n", "t-shirt", "#191d1f", { colore: "nero" }),
+    capo("m", "maglione", "#e2dfc6"), capo("o", "polo", "#a0532f", { colore: "ruggine" }), capo("n", "t-shirt", "#191d1f", { colore: "nero" }),
   ]);
   const strati = (pz) => m.perche(pz, pz[0]).find((r) => r.tipo === "strati").testo;
   assert.match(strati([panna, oliva]), /tocco di colore sotto un neutro/);
@@ -292,7 +295,7 @@ test("pelle: caldi e profondi in alto, nero e freddi chiari in basso; conta nell
     capo("a", "felpa", "#191d1f", { colore: "nero" }), capo("b", "felpa", "#5f5e3a", { colore: "verde oliva" }),
     capo("c", "felpa", "#a0532f", { colore: "ruggine" }), capo("d", "felpa", "#bbcadb", { colore: "azzurro polvere" }),
     capo("e", "felpa", "#e5e5da", { colore: "panna" }), capo("f", "felpa", "#202428", { colore: "blu navy" }),
-    capo("g", "jeans", "#33424d"), capo("h", "t-shirt", "#1e2328", { colore: "blu notte" }),
+    capo("g", "jeans", "#1d2426"), capo("h", "t-shirt", "#1e2328", { colore: "blu notte" }),
     capo("i", "maglia manica lunga", "#333b48"),
   ]);
   assert.equal(maglia.slot, "mid", "la maglia a manica lunga si mette sopra");

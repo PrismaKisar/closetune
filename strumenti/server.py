@@ -90,7 +90,7 @@ def carica(root=DATI):
               if r.startswith("- [")] if outfit_md.exists() else []
     profilo_md = root / "profilo.md"
     profilo = leggi_capo(profilo_md.read_text()) if profilo_md.exists() else None
-    return {"capi": capi, "outfit": outfit, "profilo": {"pelle": (profilo or {}).get("pelle")}}
+    return {"capi": capi, "outfit": outfit, "profilo": {k: (profilo or {}).get(k) for k in ("pelle", "capelli")}}
 
 
 STATI = ("attivo", "dismesso", "casa")

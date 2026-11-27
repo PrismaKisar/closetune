@@ -1,4 +1,5 @@
 // Logica pura dell'armadio: colore (OKLCH), filtri, punteggi di abbinamento, outfit e motivazioni.
+import { gusto, impostaContrasto, neutroEsteso } from "./gusto.js";
 
 // ---------- colore ----------
 const lin = (c) => (c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
@@ -82,7 +83,8 @@ export function prepara(capi) {
       tipo: tipo(c.categoria || ""),
       famiglia: famiglia(lch),
       // il denim si comporta da neutro
-      neutro: lch.C < SOGLIA_NEUTRO || (/jeans|denim/i.test(c.categoria + c.colore) && lch.C < 0.09),
+      // navy, beige/marrone e oliva fanno da neutri (gusto.js); il denim pure
+      neutro: neutroEsteso(lch) || (/jeans|denim/i.test(c.categoria + c.colore) && lch.C < 0.09),
       formalita: livelli.length ? [Math.min(...livelli), Math.max(...livelli)] : [1, 1],
       stagione: c.stagione || [],
       occasione: c.occasione || [],
@@ -163,6 +165,9 @@ export function coppia(a, b) {
   if (belt.slot === "belt" && shoes.slot === "shoes") return cinturaScarpe(belt, shoes);
   const tipo = relazione(a, b);
   let p = RELAZIONI[tipo].base;
+  // tinte lontane funzionano solo come piccolo accento (scarpe, cintura), non tra capi grandi
+  const piccolo = [a, b].some((x) => x.slot === "shoes" || x.slot === "belt");
+  if (!piccolo && (tipo === "complementari" || tipo === "triade")) p -= 0.18;
   const dL = Math.abs(a.lch.L - b.lch.L);
   if (tipo !== "monocromatico" && tipo !== "tono su tono") {
     if (dL < 0.1) p -= 0.12;
@@ -176,7 +181,7 @@ export function coppia(a, b) {
 // Senza, niente voto pelle. ponytail: le regole sotto valgono per sottotono caldo e contrasto alto;
 // per altri profili servono regole per stagione-colore.
 let PELLE = null;
-export const impostaPelle = (hex) => { PELLE = hex ? oklch(hex) : null; };
+export const impostaPelle = (hex, capelli) => { PELLE = hex ? oklch(hex) : null; impostaContrasto(PELLE, capelli); };
 const distanzaOk = (a, b) => Math.hypot(a.L - b.L, a.C * Math.cos((a.h * Math.PI) / 180) - b.C * Math.cos((b.h * Math.PI) / 180), a.C * Math.sin((a.h * Math.PI) / 180) - b.C * Math.sin((b.h * Math.PI) / 180));
 
 /** Quanto un capo vicino al viso valorizza la tua pelle: voto 0-1 (0.6 = indifferente) e il perché. */
@@ -219,6 +224,8 @@ const distanzaFormale = (pezzi) => {
 };
 
 export function punteggioOutfit(pezzi, approvati = []) {
+  const g = gusto(pezzi);
+  if (g.vietato) return 0;
   let somma = 0, pesi = 0;
   const conMid = pezzi.some((x) => x.slot === "mid");
   for (let i = 0; i < pezzi.length; i++)
@@ -233,8 +240,11 @@ export function punteggioOutfit(pezzi, approvati = []) {
   let p = pesi ? somma / pesi : 0;
   p -= 0.12 * distanzaFormale(pezzi);
   p += 0.4 * (pelleOutfit(pezzi) - 0.6); // quanto sta bene con la tua pelle: da -0.08 a +0.11
+  p += g.delta; // regole di stile (gusto.js)
   const ids = new Set(pezzi.map((x) => x.id));
   if (approvati.some((o) => o.length && o.every((id) => ids.has(id)))) p += 0.15;
+  // tetto morbido: sopra 0.9 il punteggio si avvicina a 1 senza toccarlo, così i migliori restano in ordine
+  if (p > 0.9) p = 0.9 + 0.1 * (1 - Math.exp(-(p - 0.9) / 0.1));
   return Math.max(0, Math.min(1, p));
 }
 
@@ -261,13 +271,15 @@ export function outfitDa(fissi, pool, { n = Infinity, approvati = [], perSlot = 
   if (!scelto || fissi.some((f) => f.stato === "casa")) return { outfit: [], mancanti: [] };
   const occupati = fissi.map((f) => f.slot);
   if (new Set(occupati).size < occupati.length) return { outfit: [], mancanti: [], doppi: true };
+  const vietato = gusto(fissi).vietato;
+  if (vietato) return { outfit: [], mancanti: [], vietato };
   pool = pool.filter((c) => c.stato !== "casa");
   const servono = ["base", "mid", "bottom", "shoes", "belt"].filter((s) => !occupati.includes(s));
   const candidati = {};
   const mancanti = [];
   for (const s of servono) {
     const lista = pool
-      .filter((c) => c.slot === s && fissi.every((f) => sovrapponeStagione(f, c)) && distanzaFormale([...fissi, c]) <= 1)
+      .filter((c) => c.slot === s && fissi.every((f) => sovrapponeStagione(f, c)) && distanzaFormale([...fissi, c]) <= 1 && !gusto([...fissi, c]).vietato)
       .map((c) => ({ c, p: punteggioOutfit([...fissi, c], approvati) }))
       .sort((a, b) => b.p - a.p)
       .slice(0, perSlot)
@@ -279,7 +291,7 @@ export function outfitDa(fissi, pool, { n = Infinity, approvati = [], perSlot = 
   let combo = [fissi];
   for (const s of Object.keys(candidati)) combo = combo.flatMap((pz) => candidati[s].map((c) => [...pz, c]));
   if (combo.length === 1 && combo[0].length === 1) return { outfit: [], mancanti };
-  const restanti = combo.filter(stagioneComune).map((pezzi) => ({ pezzi, punteggio: punteggioOutfit(pezzi, approvati) }));
+  const restanti = combo.filter((pz) => stagioneComune(pz) && !gusto(pz).vietato).map((pezzi) => ({ pezzi, punteggio: punteggioOutfit(pezzi, approvati) }));
 
   // varietà: ogni volta che un pezzo è già stato proposto, i suoi outfit successivi scendono un po'
   const uso = new Map();
@@ -352,6 +364,7 @@ export function perche(pezzi, scelto, approvati = []) {
     righe.push({ tipo: "cintura", testo: cinturaScarpe(belt, shoes).tipo === "in tinta" ? "Cintura in tinta con le scarpe." : "Cintura e scarpe non sono in tinta: meglio una cintura più vicina alle scarpe." });
   const v = viso(a);
   if (v) righe.push({ tipo: "viso", testo: v.testo });
+  righe.push(...gusto(pezzi).note.slice(0, 2));
   const ids = new Set(pezzi.map((x) => x.id));
   if (approvati.some((o) => o.length && o.every((id) => ids.has(id)))) righe.push({ tipo: "approvato", testo: "Combinazione già approvata in outfit.md." });
   return righe;

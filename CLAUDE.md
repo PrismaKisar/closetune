@@ -9,8 +9,8 @@ Questa directory è l'inventario strutturato dei capi d'abbigliamento dell'utent
 
 ```
 closetune          comando: avvia il server e apre il sito
-sito/              il sito (index.html, app.js, abbinamenti.js = colori e outfit, style.css)
-strumenti/         server.py, foto.py (foto calibrate), cinture.py, foto_web.py (foto da vetrina), test
+sito/              il sito (index.html, app.js, abbinamenti.js = colori e outfit, gusto.js = regole di stile, style.css)
+strumenti/         server.py, foto.py (foto calibrate), cinture.py, foto_web.py (foto da vetrina), pubblica.py (GitHub Pages), test
 dati/              dati personali, fuori dal repo git:
   profilo.md         colori pelle/occhi/capelli, taglie, stile; `pelle: "#hex"` per il voto pelle del sito
   capi/NNN-nome.md   un file per ogni capo posseduto
@@ -59,6 +59,8 @@ Note libere (pattern particolari, dettagli non catalogabili sopra).
 ```
 
 Naming file: `capi/NNN-descrizione-breve.md`, NNN = id progressivo a 3 cifre.
+
+Sito online (sola lettura, dati pubblici per scelta dell'utente): https://prismakisar.github.io/closetune/ — si aggiorna con `.venv/bin/python strumenti/pubblica.py` dopo ogni modifica a sito o dati. Le regole di gusto (`sito/gusto.js`) vengono da `ricerca/gusto-abbinamenti.md`.
 
 ## Come rispondere alle richieste
 

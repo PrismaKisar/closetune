@@ -61,7 +61,7 @@ class TestParser(unittest.TestCase):
 class TestServer(unittest.TestCase):
     def test_armadio_vuoto(self):
         with tempfile.TemporaryDirectory() as tmp:
-            self.assertEqual(server.carica(Path(tmp)), {"capi": [], "outfit": [], "profilo": {"pelle": None}})
+            self.assertEqual(server.carica(Path(tmp)), {"capi": [], "outfit": [], "profilo": {"pelle": None, "capelli": None}})
 
     def test_api_e_collage(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -73,9 +73,9 @@ class TestServer(unittest.TestCase):
             d = server.carica(root)
             self.assertTrue(all(c["foto_collage"] for c in d["capi"]))
             self.assertEqual(d["outfit"], [["001", "002"]])
-            self.assertEqual(d["profilo"], {"pelle": None})
-            (root / "profilo.md").write_text('---\npelle: "#ddb095"   # selfie\n---\n')
-            self.assertEqual(server.carica(root)["profilo"], {"pelle": "#ddb095"})
+            self.assertEqual(d["profilo"], {"pelle": None, "capelli": None})
+            (root / "profilo.md").write_text('---\ncapelli: nero\npelle: "#ddb095"   # selfie\n---\n')
+            self.assertEqual(server.carica(root)["profilo"], {"pelle": "#ddb095", "capelli": "nero"})
             self.assertNotIn("foto_web", d["capi"][0])
             (root / "foto" / "web").mkdir(parents=True)
             (root / "foto" / "web" / "collage.webp").write_bytes(b"x")

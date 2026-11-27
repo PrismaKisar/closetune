@@ -279,9 +279,10 @@ function risultatiCrea() {
   const fissi = fissiDaHash();
   const box = $("#risultati-crea");
   if (!fissi.length) { box.innerHTML = `<p class="avviso">Tocca uno o più capi qui sopra: ti propongo gli outfit, dal migliore.</p>`; return; }
-  const { outfit: proposti, mancanti } = outfitDa(fissi, filtra(st.capi, { stato: "attivo" }), { approvati: st.approvati });
+  const { outfit: proposti, mancanti, vietato } = outfitDa(fissi, filtra(st.capi, { stato: "attivo" }), { approvati: st.approvati });
+  if (vietato) { box.innerHTML = `<p class="avviso">${esc(vietato)} Togli uno dei due capi.</p>`; return; }
   box.innerHTML = `${mancanti.length ? `<p class="avviso">Nessun capo adatto tra: <b>${esc(mancanti.map((s) => NOMI_SLOT[s]).join(", "))}</b>.</p>` : ""}
-    <p class="n-abb" aria-live="polite">${proposti.length ? `${proposti.length} outfit, dal migliore` : "Questi capi non stanno insieme: stagione o formalità troppo diverse."}</p>
+    <p class="n-abb" aria-live="polite">${proposti.length ? `${proposti.length} outfit, dal migliore` : "Questi capi non stanno insieme: stagione, formalità o stile troppo diversi."}</p>
     <div id="lista-outfit"></div>
     <button type="button" class="btn altri" id="altri" hidden></button>`;
   lista = { outfit: proposti, scelto: fissi[0], fissi, mostrati: 0 };
@@ -424,7 +425,7 @@ document.addEventListener("load", (e) => {
 fetch("api/capi")
   .then((r) => r.json())
   .then((d) => {
-    impostaPelle(d.profilo?.pelle);
+    impostaPelle(d.profilo?.pelle, d.profilo?.capelli);
     st.statico = !!d.statico; // versione su GitHub Pages: sola lettura
     st.capi = prepara(d.capi);
     st.approvati = d.outfit;
