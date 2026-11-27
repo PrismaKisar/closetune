@@ -23,7 +23,7 @@ const marca = (c) => (/^sconosciut/i.test(c.marca || "") ? "" : c.marca || "");
 // ---------- pezzi riusabili ----------
 function visuale(c, grande = false) {
   if (c.foto && !c.foto_collage)
-    return `<img src="/${esc(c.foto_web || c.foto)}" alt="${esc(cap(c.categoria))} ${esc(c.colore)}${marca(c) ? ", " + esc(marca(c)) : ""}" ${grande ? "" : 'loading="lazy"'} decoding="async">`;
+    return `<img src="${esc(c.foto_web || c.foto)}" alt="${esc(cap(c.categoria))} ${esc(c.colore)}${marca(c) ? ", " + esc(marca(c)) : ""}" ${grande ? "" : 'loading="lazy"'} decoding="async">`;
   // multicolore: il dominante pieno, i secondari in fasce sul fondo
   const sec = (c.hex_secondari || []).filter((h) => /^#[0-9a-f]{6}$/i.test(h));
   const fasce = sec.length ? `;--fasce:linear-gradient(${sec.map((h, i) => `${h} ${(i * 100) / sec.length}% ${((i + 1) * 100) / sec.length}%`).join(",")})` : "";
@@ -201,7 +201,7 @@ function vistaDettaglio(c) {
       <h1 id="titolo-capo">${esc(cap(c.categoria))}</h1>
       <dl class="info">${righe.map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`).join("")}</dl>
       ${c.note ? `<p class="note">${esc(c.note)}</p>` : ""}
-      <div class="azioni-capo">
+      <div class="azioni-capo"${st.statico ? " hidden" : ""}>
         ${c.stato === "attivo"
           ? `<button type="button" class="btn-stato" data-cambia-stato="casa">Segna da casa</button><button type="button" class="btn-stato" data-cambia-stato="dismesso">Segna come dismesso</button>`
           : `<button type="button" class="btn-stato riattiva" data-cambia-stato="attivo">Rimetti tra gli attivi</button>`}
@@ -246,7 +246,7 @@ function vistaOggi() {
 
 function vistaArcobaleno() {
   const capi = ordineArcobaleno(st.capi);
-  main.innerHTML = `<div class="oggi">
+  main.innerHTML = `<div class="oggi arcobaleno">
     <a class="indietro" href="#">Tutti i capi</a>
     <div class="oggi-testa"><div><p class="marca">${capi.length} capi sopra · dal primo all'ultimo</p><h1>Ordine per l'armadio</h1></div></div>
     <ol class="griglia">${capi.map(carta).join("")}</ol>
@@ -328,7 +328,7 @@ async function cambiaStato(btn) {
   const stato = btn.dataset.cambiaStato;
   btn.disabled = true;
   try {
-    const r = await fetch(`/api/capi/${encodeURIComponent(c.id)}/stato`, {
+    const r = await fetch(`api/capi/${encodeURIComponent(c.id)}/stato`, {
       method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ stato }),
     });
     if (!r.ok) throw new Error(r.status);
@@ -365,10 +365,11 @@ document.addEventListener("load", (e) => {
   img.classList.toggle("grezza", !img.src.includes("/foto/web/") && (r < 0.8 || r > 1.5));
 }, true);
 
-fetch("/api/capi")
+fetch("api/capi")
   .then((r) => r.json())
   .then((d) => {
     impostaPelle(d.profilo?.pelle);
+    st.statico = !!d.statico; // versione su GitHub Pages: sola lettura
     st.capi = prepara(d.capi);
     st.approvati = d.outfit;
     const iniziale = st.capi.find((x) => location.hash === `#capo/${x.id}`);
