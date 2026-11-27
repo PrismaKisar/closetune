@@ -1,5 +1,6 @@
 // Logica pura dell'armadio: colore (OKLCH), filtri, punteggi di abbinamento, outfit e motivazioni.
 import { gusto, impostaContrasto, neutroEsteso } from "./gusto.js";
+export { taraSuApprovati } from "./gusto.js";
 
 // ---------- colore ----------
 const lin = (c) => (c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
@@ -233,7 +234,9 @@ export function punteggioOutfit(pezzi, approvati = []) {
       const coppiaPz = [pezzi[i], pezzi[j]];
       const scarpa = coppiaPz.find((x) => x.slot === "shoes");
       // con le sneaker la cintura in tinta conta poco
-      const w = coppiaPz.some((x) => x.slot === "belt") && scarpa && /sneaker/i.test(scarpa.categoria) ? 0.3 : peso(pezzi[i], pezzi[j], conMid);
+      const conCintura = coppiaPz.some((x) => x.slot === "belt");
+      // con le sneaker, o con la cintura coperta da maglione o felpa, la cintura in tinta conta poco
+      const w = conCintura && scarpa && /sneaker/i.test(scarpa.categoria) ? 0.3 : conCintura && conMid ? 0.5 * peso(pezzi[i], pezzi[j], conMid) : peso(pezzi[i], pezzi[j], conMid);
       somma += w * coppia(pezzi[i], pezzi[j]).punteggio;
       pesi += w;
     }
@@ -253,6 +256,10 @@ const vicinoAlViso = (pezzi) => pezzi.find((x) => x.slot === "mid") ?? pezzi.fin
 // la base sta sotto uno strato: si porta in ogni stagione
 const stagioni = (c) => (c.slot === "base" || !c.stagione.length ? ["primavera", "estate", "autunno", "inverno"] : c.stagione);
 const sovrapponeStagione = (a, b) => stagioni(a).some((s) => stagioni(b).includes(s));
+// senza strato sopra: solo se tutti i pezzi (con le stagioni vere, anche della base) reggono primavera o estate
+const caldo = ["primavera", "estate"];
+const senzaStrato = (pezzi) => pezzi.some((p) => p.slot === "base") &&
+  caldo.some((s) => pezzi.every((p) => !p.stagione.length || p.stagione.includes(s)));
 const stagioneComune = (pezzi) =>
   ["primavera", "estate", "autunno", "inverno"].some((s) => pezzi.every((p) => stagioni(p).includes(s)));
 
@@ -288,9 +295,15 @@ export function outfitDa(fissi, pool, { n = Infinity, approvati = [], perSlot = 
     else mancanti.push(s);
   }
   // ponytail: perSlot^4 combinazioni (1296 con 6), ordinamento O(n²); alzare perSlot solo con un ordinamento più furbo
+  // lo strato sopra è facoltativo: d'estate la base si porta da sola (null = niente strato)
+  const opzionaleMid = servono.includes("mid");
+  if (opzionaleMid) candidati.mid = [...(candidati.mid ?? []), null];
   let combo = [fissi];
-  for (const s of Object.keys(candidati)) combo = combo.flatMap((pz) => candidati[s].map((c) => [...pz, c]));
-  if (combo.length === 1 && combo[0].length === 1) return { outfit: [], mancanti };
+  for (const s of Object.keys(candidati)) combo = combo.flatMap((pz) => candidati[s].map((c) => (c ? [...pz, c] : pz)));
+  combo = combo.filter((pz) => pz.some((p) => p.slot === "mid") || senzaStrato(pz));
+  if (!combo.length || (combo.length === 1 && combo[0].length === 1)) return { outfit: [], mancanti };
+  // se la base basta da sola, lo strato sopra non "manca"
+  if (mancanti.includes("mid") && combo.some((pz) => !pz.some((p) => p.slot === "mid"))) mancanti.splice(mancanti.indexOf("mid"), 1);
   const restanti = combo.filter((pz) => stagioneComune(pz) && !gusto(pz).vietato).map((pezzi) => ({ pezzi, punteggio: punteggioOutfit(pezzi, approvati) }));
 
   // varietà: ogni volta che un pezzo è già stato proposto, i suoi outfit successivi scendono un po'

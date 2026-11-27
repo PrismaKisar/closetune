@@ -194,7 +194,7 @@ test("strati: mai due capi dello stesso strato (pile + felpa, t-shirt + camicia)
     const { outfit } = m.outfit(scelto, capi, { n: 5 });
     assert.ok(outfit.length > 0, scelto.id);
     for (const o of outfit) {
-      assert.equal(o.pezzi.filter((p) => p.slot === "mid").length, 1, `${scelto.id}: uno strato sopra`);
+      assert.ok(o.pezzi.filter((p) => p.slot === "mid").length <= 1, `${scelto.id}: al massimo uno strato sopra`);
       assert.equal(o.pezzi.filter((p) => p.slot === "base").length, 1, `${scelto.id}: una base`);
     }
   }
@@ -375,4 +375,19 @@ test("outfit builder: più capi fissati, completa solo gli strati liberi", () =>
   // tutti gli strati fissati: un solo outfit, quello
   assert.equal(m.outfitDa(capi.filter((c) => c.id !== "t2" && c.id !== "j2"), capi).outfit.length, 1);
   assert.deepEqual(m.outfitDa([f], capi).outfit[0].pezzi.length, m.outfit(f, capi).outfit[0].pezzi.length);
+});
+
+test("strato sopra facoltativo: d'estate la polo va da sola, d'inverno serve lo strato", () => {
+  const estate = { stagione: ["primavera", "estate"] }, inverno = { stagione: ["autunno", "inverno"] };
+  const capi = m.prepara([
+    capo("polo", "polo", "#263c47", estate), capo("magl", "maglione", "#e2dfc6", { stagione: ["primavera", "autunno"] }),
+    capo("j", "jeans", "#dce1d4", estate), capo("s", "sneaker", "#d2d4ce"),
+    capo("jw", "jeans", "#1d2426", inverno), capo("mw", "maglione", "#2a322e", inverno),
+  ]);
+  const [polo, , , , jw] = capi;
+  const { outfit: o } = m.outfit(polo, capi);
+  assert.ok(!o[0].pezzi.some((p) => p.slot === "mid"), "la polo da sola batte la polo sotto il maglione");
+  assert.ok(o.some((x) => x.pezzi.some((p) => p.slot === "mid")), "lo strato resta tra le proposte");
+  // i jeans invernali non reggono un outfit senza strato
+  for (const x of m.outfit(jw, capi).outfit) assert.ok(x.pezzi.some((p) => p.slot === "mid"));
 });

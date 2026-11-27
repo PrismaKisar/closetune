@@ -63,8 +63,9 @@ test("cintura nera con stivali marroni in pelle: vietato; con sneaker libero", (
     capo("cn", "cintura", "#1e1f1d", { materiale: "pelle" }), capo("cm", "cintura", "#826846", { materiale: "pelle" }),
     capo("st", "stivale", "#b0642c", { materiale: "nabuk" }), capo("sn", "sneaker", "#181517", { materiale: "pelle" }),
   );
-  assert.ok(g.gusto([cintN, stiv]).vietato);
-  assert.equal(g.gusto([cintM, stiv]).vietato, null);
+  const [cam] = P(capo("c", "camicia", "#bbc8da"));
+  assert.ok(g.gusto([cam, cintN, stiv]).vietato);
+  assert.equal(g.gusto([cam, cintM, stiv]).vietato, null);
   assert.equal(g.gusto([cintM, snk]).vietato, null);
 });
 
@@ -116,4 +117,46 @@ test("fantasie: due uguali penalizzate", () => {
     capo("c", "camicia", "#1f2a44"),
   );
   assert.ok(g.gusto([r2, r1]).delta < g.gusto([liscio, r1]).delta);
+});
+
+test("cintura nera e stivali marroni: vietato solo se la cintura si vede", () => {
+  const [cint, stiv, cam, magl] = P(
+    capo("cn", "cintura", "#1e1f1d", { materiale: "pelle" }), capo("st", "stivale", "#b0642c", { materiale: "nabuk" }),
+    capo("c", "camicia", "#bbc8da"), capo("m", "maglione", "#2a322e"),
+  );
+  assert.ok(g.gusto([cam, cint, stiv]).vietato, "camicia senza strato: cintura in vista");
+  const coperta = g.gusto([cam, magl, cint, stiv]);
+  assert.equal(coperta.vietato, null);
+  assert.ok(coperta.delta < g.gusto([cam, magl, stiv]).delta, "ma resta sconsigliato");
+});
+
+test("peso del tessuto dal file del capo", () => {
+  const [grossa, merino, sottile, tee, pile, lino] = P(
+    capo("a", "maglione", "#1c1e1d", { modello: "girocollo, maglia a grana grossa" }),
+    capo("b", "maglione", "#254059", { materiale: "50% lana merino, 50% cotone" }),
+    capo("c", "maglione", "#d7cfb3", { modello: "scollo a V, maglia sottile" }), capo("d", "t-shirt", "#191d1f"),
+    capo("e", "pile", "#d8aa44"), capo("f", "pantalone", "#e6e7db", { materiale: "lino" }),
+  );
+  assert.deepEqual([grossa, merino, sottile, tee, pile].map(g.peso), [3, 3, 1, 1, 3]);
+  assert.ok(g.gusto([grossa, lino]).note.some((n) => /pesi diversi/.test(n.testo)));
+});
+
+test("proporzioni: solo se la vestibilità è nel file del capo", () => {
+  const [ampio, senza, minimal, boot] = P(
+    capo("a", "pantalone", "#ded9c7", { vestibilita: "ampio" }), capo("b", "pantalone", "#ded9c7"),
+    capo("m", "sneaker", "#d2d4ce", { modello: "cupsole minimal, profilo basso" }), capo("s", "stivale", "#b0642c"),
+  );
+  assert.equal(g.volume(minimal), "sottile");
+  assert.equal(g.volume(boot), "pesante");
+  assert.ok(g.gusto([ampio, minimal]).delta < g.gusto([senza, minimal]).delta);
+});
+
+test("taratura: con 5 outfit approvati la fascia di contrasto segue i tuoi", () => {
+  g.impostaContrasto(null);
+  const [top, bot] = P(capo("a", "maglione", "#e2dfc6"), capo("b", "jeans", "#dce1d4"));
+  assert.deepEqual(g.taraSuApprovati([[top, bot]]), [0.15, 0.45], "pochi dati: resta la ricerca");
+  // cinque outfit tonali (ΔL ~0.05): la fascia scende
+  const [lo, hi] = g.taraSuApprovati(Array(5).fill([top, bot]));
+  assert.ok(lo < 0.15 && hi < 0.45);
+  g.taraSuApprovati([]);
 });

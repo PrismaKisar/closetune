@@ -1,4 +1,4 @@
-import { FAMIGLIE, NOMI_SLOT, RELAZIONI, TIPI, delGiorno, filtra, giudizio, giudizioPelle, impostaPelle, ordineArcobaleno, outfit, outfitDa, percentuale, prepara } from "./abbinamenti.js";
+import { FAMIGLIE, NOMI_SLOT, RELAZIONI, TIPI, delGiorno, filtra, giudizio, giudizioPelle, impostaPelle, ordineArcobaleno, outfit, outfitDa, percentuale, prepara, taraSuApprovati } from "./abbinamenti.js";
 
 const STAGIONI = ["primavera", "estate", "autunno", "inverno"];
 const OCCASIONI = ["casual", "smart-casual", "elegante", "sportivo", "outdoor"];
@@ -149,7 +149,7 @@ function schedaOutfit(o, i, scelto, inGruppo = i, fissi = [scelto]) {
     <div class="outfit-corpo">
       <ul class="pezzi" style="--n:${pezzi.length}">${pezzi.map((p) => `<li><a class="pezzo${fissi.includes(p) ? " attuale" : ""}" href="#capo/${esc(p.id)}"${fissi.includes(p) ? ' aria-current="true"' : ""}>
         <div class="cornice">${visuale(p)}<span class="id" aria-label="numero ${esc(p.id)}">${esc(p.id)}</span></div>
-        <span class="ruolo">${RUOLO[p.slot]}</span>
+        <span class="ruolo">${p.slot === "base" && !pezzi.some((x) => x.slot === "mid") ? "Sopra" : RUOLO[p.slot]}</span>
         <span class="pezzo-nome">${esc(marca(p) || cap(p.categoria))}</span>
         <span class="pezzo-colore"><i style="--c:${esc(p.hex)}"></i><span>${esc(p.nomeColore)}</span></span>
       </a></li>`).join("")}</ul>
@@ -157,6 +157,7 @@ function schedaOutfit(o, i, scelto, inGruppo = i, fissi = [scelto]) {
         ${striscia(pezzi)}
         <div class="palette-grafici">${ruota(pezzi, scelto)}${luce(pezzi)}</div>
         <ul class="motivi">${o.perche.map((m) => `<li data-tipo="${esc(m.tipo)}">${esc(m.testo)}</li>`).join("")}</ul>
+        ${st.statico ? "" : bottoneApprova(o.pezzi)}
       </div>
     </div>
   </article>`;
@@ -357,6 +358,7 @@ document.addEventListener("click", (e) => {
   else if (t.dataset.pool) { st.pool = t.dataset.pool; render(); }
   else if (t.id === "altri") altriOutfit();
   else if (t.dataset.fisso) toggleFisso(t.dataset.fisso);
+  else if (t.dataset.approva) approva(t);
   else if (t.id === "svuota") { history.replaceState(null, "", "#crea"); vistaCrea(); }
   else if (t.id === "rimescola") { st.giro++; vistaOggi(); }
   else if (t.id === "apri-filtri" || t.dataset.chiudi !== undefined) {
@@ -379,6 +381,31 @@ $("#cerca").addEventListener("input", (e) => {
 });
 
 // scrive stato: nel file .md del capo (il file resta: lo storico non si perde)
+// ---------- approvare un outfit: finisce in outfit.md e tara il gusto ----------
+const giaApprovato = (ids) => st.approvati.some((o) => o.length === ids.length && ids.every((id) => o.includes(id)));
+function bottoneApprova(pezzi) {
+  const ids = pezzi.map((p) => p.id);
+  const fatto = giaApprovato(ids);
+  return `<button type="button" class="btn-approva" data-approva="${esc(ids.join(","))}" aria-pressed="${fatto}"${fatto ? " disabled" : ""}>${fatto ? "Approvato" : "Mi piace, approva"}</button>`;
+}
+const pezziApprovati = () => st.approvati.map((o) => o.map((id) => st.capi.find((c) => c.id === id)).filter(Boolean));
+
+async function approva(btn) {
+  const ids = btn.dataset.approva.split(",");
+  btn.disabled = true;
+  try {
+    const r = await fetch("api/outfit", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ids }) });
+    if (!r.ok) throw new Error(r.status);
+    if (!giaApprovato(ids)) st.approvati.push(ids);
+    taraSuApprovati(pezziApprovati());
+    btn.textContent = "Approvato";
+    btn.setAttribute("aria-pressed", "true");
+  } catch {
+    btn.disabled = false;
+    btn.textContent = "Non salvato: il server è acceso?";
+  }
+}
+
 async function cambiaStato(btn) {
   const c = st.capi.find((x) => location.hash === `#capo/${x.id}`);
   if (!c) return;
@@ -429,6 +456,7 @@ fetch("api/capi")
     st.statico = !!d.statico; // versione su GitHub Pages: sola lettura
     st.capi = prepara(d.capi);
     st.approvati = d.outfit;
+    taraSuApprovati(pezziApprovati());
     const iniziale = st.capi.find((x) => location.hash === `#capo/${x.id}`);
     if (iniziale?.stato === "dismesso") st.pool = "tutti";
     aggiornaRiassunto();

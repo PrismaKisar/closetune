@@ -409,3 +409,14 @@ h1, h2, h3 { margin: 0; font-weight: 400; }
   .scelta ul { flex-wrap: nowrap; margin: 0 calc(-1 * var(--gutter)); padding: 4px var(--gutter) 8px; overflow-x: auto; scroll-snap-type: x proximity; scrollbar-width: none; }
   .scelta li { width: 84px; }
 }
+
+/* approvare un outfit (solo con il server acceso) */
+.btn-approva {
+  justify-self: start; margin-top: 4px; min-height: 40px; padding: 0 16px; border-radius: 999px; border: 0; cursor: pointer;
+  font: 500 14px/1 var(--sans); background: transparent; color: var(--ink); box-shadow: inset 0 0 0 1px var(--line);
+  transition: background .2s, transform .15s var(--ease);
+}
+.btn-approva:hover:not(:disabled) { background: var(--surface); }
+.btn-approva:active:not(:disabled) { transform: scale(.97); }
+.btn-approva[aria-pressed="true"] { background: var(--accent); color: #fff; box-shadow: none; cursor: default; }
+.btn-approva:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }

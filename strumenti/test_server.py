@@ -158,6 +158,18 @@ class TestStato(unittest.TestCase):
             server.imposta_stato("042", "cancellato", self.root)
         self.assertEqual(self.file.read_text(), CAPO_STATO)
 
+    def test_approva_outfit(self):
+        (self.root / "capi" / "043-maglia.md").write_text(CAPO_STATO.replace("042", "043"))
+        self.assertTrue(server.approva_outfit(["042", "043"], self.root))
+        self.assertTrue(server.approva_outfit(["043", "042"], self.root))   # stessa combinazione: non si ripete
+        righe = [r for r in (self.root / "outfit.md").read_text().splitlines() if r.startswith("- [")]
+        self.assertEqual(righe, ["- [042, 043]"])
+        self.assertEqual(server.carica(self.root)["outfit"], [["042", "043"]])
+        self.assertFalse(server.approva_outfit(["042", "999"], self.root))  # id che non esiste
+        for errato in ([], ["042", "042"], ["../x"]):
+            with self.assertRaises(ValueError):
+                server.approva_outfit(errato, self.root)
+
     def test_http(self):
         handler = type("H", (server.Handler,), {"root": self.root})
         srv = ThreadingHTTPServer(("127.0.0.1", 0), partial(handler, directory=str(self.root)))
@@ -187,6 +199,10 @@ class TestStato(unittest.TestCase):
                                          headers={"Content-Type": "application/json"})
             with self.assertRaises(urllib.error.HTTPError):
                 urllib.request.urlopen(req)
+            url = f"http://127.0.0.1:{srv.server_port}/api/outfit"
+            self.assertEqual(post('{"ids": ["042"]}', origine="http://evil.example"), 403)
+            self.assertEqual(post('{"ids": ["042"]}'), 204)
+            self.assertIn("- [042]", (self.root / "outfit.md").read_text())
         finally:
             srv.shutdown()
 

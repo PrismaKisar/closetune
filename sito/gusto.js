@@ -44,6 +44,25 @@ export function fantasia(c) {
   return null;
 }
 
+/** Spessore del tessuto, dal file del capo: 1 leggero, 2 medio, 3 pesante. */
+export function peso(c) {
+  const t = `${c.categoria} ${c.modello ?? ""} ${c.materiale ?? ""}`.toLowerCase();
+  if (/grana grossa|trecce|pile|felpato|montone|piumino/.test(t)) return 3;
+  const lana = Number(/(\d+(?:[.,]\d+)?)\s*%\s*lana/.exec(t)?.[1]?.replace(",", ".") ?? (/\blana\b/.test(t) && !/%/.test(t) ? 100 : 0));
+  if (c.slot === "mid" && lana >= 50) return 3;
+  if (/lino|piqu|sottile|seersucker|canott/.test(t) || ["base", "shoes", "belt"].includes(c.slot)) return 1;
+  return 2;
+}
+
+/** Vestibilità del pantalone (campo facoltativo `vestibilita:` slim | regular | ampio) e volume della scarpa. */
+const vestibilita = (c) => (/skinny|slim|stretto/.test(c.vestibilita ?? "") ? "slim" : /ampi|wide|larg|baggy|relaxed/.test(c.vestibilita ?? "") ? "ampio" : c.vestibilita ? "regular" : null);
+export function volume(c) {
+  const t = `${c.categoria} ${c.modello ?? ""}`.toLowerCase();
+  if (/stival|boot|chunky|platform/.test(t)) return "pesante";
+  if (/minimal|profilo basso|mocassin|derby|oxford/.test(t)) return "sottile";
+  return "medio";
+}
+
 const denim = (c) => /denim|jeans/.test(`${c.categoria} ${c.materiale ?? ""}`.toLowerCase());
 const pelleCuoio = (c) => /pelle|nabuk|camoscio|cuoio/.test(mat(c)) && !/tessuto/.test(mat(c));
 const sneaker = (c) => /sneaker/i.test(c.categoria);
@@ -96,6 +115,20 @@ export function impostaContrasto(pelle, capelli = "") {
   CONTRASTO = d > 0.45 ? "alto" : d < 0.25 ? "basso" : "medio";
 }
 const FASCIA = { alto: [0.25, 0.6], medio: [0.15, 0.45], basso: [0.12, 0.3] };
+let TUA = null; // fascia tarata sui tuoi outfit approvati
+
+/** Taratura sul tuo gusto: con almeno 5 outfit approvati la fascia di contrasto sopra/sotto ideale
+ * si centra sulla mediana dei tuoi (±0.12), metà ricerca e metà te. Ritorna la fascia usata. */
+export function taraSuApprovati(outfit) {
+  const d = outfit.map((pz) => {
+    const top = pz.find((p) => p.slot === "mid") ?? pz.find((p) => p.slot === "base"), bot = pz.find((p) => p.slot === "bottom");
+    return top && bot ? Math.abs(top.lch.L - bot.lch.L) : null;
+  }).filter((x) => x !== null).sort((a, b) => a - b);
+  if (d.length < 5) { TUA = null; return FASCIA[CONTRASTO]; }
+  const med = d[Math.floor(d.length / 2)], [lo, hi] = FASCIA[CONTRASTO];
+  TUA = [(lo + Math.max(0.06, med - 0.12)) / 2, (hi + med + 0.12) / 2];
+  return TUA;
+}
 
 // ---------- il giudizio ----------
 /** { vietato: motivo | null, delta: correzione del punteggio, note: [{ tipo, testo }] } */
@@ -124,17 +157,30 @@ export function gusto(pezzi) {
     if (invernale) return no("Lino estivo con un capo invernale: stagioni opposte.");
     if (lino.slot === "base") { delta -= 0.06; note.push({ tipo: "attenzione", testo: "Lino sotto la maglia: meglio una camicia di cotone." }); }
   }
+  if (lino && pezzi.some((p) => p !== lino && peso(p) === 3)) { delta -= 0.08; note.push({ tipo: "attenzione", testo: "Lino leggero con un capo pesante: pesi diversi." }); }
+  // L9 dal sottile allo spesso: la base non è più pesante dello strato
+  if (base && mid && peso(base) > peso(mid)) { delta -= 0.08; note.push({ tipo: "attenzione", testo: "Sotto c'è il capo più pesante: va al contrario." }); }
 
-  // B1–B4 cintura e scarpe
+  // B1–B4 cintura e scarpe. La cintura si vede solo con camicia o polo senza strato sopra
+  // (maglioni e felpe coprono la vita): lì il nero/marrone è vietato, altrimenti solo sconsigliato.
+  const cinturaVisibile = !mid && base && /polo|oxford|camicia/.test(forma(base));
   if (belt && shoes && !sneaker(shoes) && pelleCuoio(shoes) && pelleCuoio(belt)) {
-    if ((nero(belt.lch) && marrone(shoes.lch)) || (marrone(belt.lch) && nero(shoes.lch)))
-      return no("Cintura e scarpe in pelle, una nera e una marrone: mai.");
+    if ((nero(belt.lch) && marrone(shoes.lch)) || (marrone(belt.lch) && nero(shoes.lch))) {
+      if (cinturaVisibile) return no("Cintura e scarpe in pelle, una nera e una marrone: mai.");
+      delta -= 0.06; note.push({ tipo: "attenzione", testo: "Cintura e scarpe di pelle diversa: coperta dalla maglia passa, ma meglio in tinta." });
+    }
   }
   if (belt && shoes && soloElegante(shoes) && /tessuto/.test(mat(belt))) { delta -= 0.08; note.push({ tipo: "attenzione", testo: "Cintura in tessuto con scarpe eleganti." }); }
 
   // S2–S3 scarpe e formalità
   if (shoes && stivale(shoes) && pezzi.some(soloElegante)) return no("Stivali da lavoro con un capo elegante.");
   if (shoes && sneaker(shoes) && shoes.occasione?.includes("sportivo") && bottom && soloElegante(bottom)) { delta -= 0.1; note.push({ tipo: "attenzione", testo: "Sneaker sportive con pantalone elegante." }); }
+
+  // proporzioni: pantalone ampio inghiotte una scarpa sottile, uno stretto stona con scarpe voluminose
+  const vb = bottom && vestibilita(bottom), vs = shoes && volume(shoes);
+  if (vb === "ampio" && vs === "sottile") { delta -= 0.08; note.push({ tipo: "attenzione", testo: "Pantalone ampio con scarpa sottile: la scarpa sparisce." }); }
+  if (vb === "slim" && vs === "medio" && sneaker(shoes) && !/minimal/.test(testo(shoes))) delta -= 0.04;
+  if (vb === "slim" && vs === "pesante") note.push({ tipo: "strati", testo: "Pantalone stretto sullo stivale: risvolto o arricciato sopra il collo." });
 
   // K3 capi saturi, S1 sneaker colorate
   const grandi = pezzi.filter((p) => p.slot !== "belt");
@@ -156,7 +202,7 @@ export function gusto(pezzi) {
   const top = mid ?? base;
   if (top && bottom) {
     const d = top.lch.L - bottom.lch.L, ad = Math.abs(d);
-    const [lo, hi] = FASCIA[CONTRASTO];
+    const [lo, hi] = TUA ?? FASCIA[CONTRASTO];
     const totalNero = nero(top.lch) && nero(bottom.lch);
     if (ad < 0.06 && !totalNero) { delta -= 0.08; note.push({ tipo: "attenzione", testo: "Sopra e sotto hanno la stessa luce: effetto tuta." }); }
     else if (totalNero && ad < 0.05) delta -= 0.04;
