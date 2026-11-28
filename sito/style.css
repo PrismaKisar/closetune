@@ -788,3 +788,8 @@ h2.n-abb { font: 400 14px/1.4 var(--sans); }
 }
 .filtro-strato { width: fit-content; max-width: 100%; overflow-x: auto; scrollbar-width: none; margin: 0 0 20px; }
 .filtro-strato button { flex: none; white-space: nowrap; }
+
+/* ridisegno nella stessa pagina: niente entrata da opacità 0 */
+.fermo .oggi, .fermo .avvio, .fermo .outfit { animation: none; }
+.vuoto { display: grid; justify-items: start; gap: 14px; padding: 28px; border-radius: 14px; background: var(--tinta); }
+.vuoto p { margin: 0; font-size: 15px; }

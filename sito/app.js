@@ -193,7 +193,7 @@ function schedaOutfit(o, { i = 0, scelto = o.pezzi[0], fissi = [scelto], oggi = 
   // in sintesi il motivo principale (il meteo ha la sua riga in testa alla pagina)
   // le proposte con un carattere dicono cosa cambia rispetto alla prima, non la stessa formula
   const sintesi = o.cambia?.length
-    ? { testo: `Rispetto alla prima: ${o.cambia.map((p) => `${p.categoria} ${p.nomeColore}`).join(", ")}, ${o.carattere === "elegante" ? "per un tono più formale" : "per più colore e contrasto"}.` }
+    ? { testo: `Rispetto alla prima: ${o.cambia.map((p) => `${p.categoria} ${p.nomeColore}`).join(", ")}${PER[o.carattere]}.` }
     : o.perche.find((m) => m.tipo !== "meteo");
   // nella composizione: strato sopra e pantaloni grandi, il resto piccolo; senza strato la base prende il suo posto
   const area = (p) => (p.slot === "base" && !pezzi.some((x) => x.slot === "mid") ? "mid" : p.slot);
@@ -257,14 +257,15 @@ const SPUNTA = `<svg viewBox="0 0 20 20" aria-hidden="true"><path d="m4.5 10.5 3
 
 // prima tre proposte con un carattere (tre), poi le altre a gruppi, solo su richiesta
 const PRIMI = 3, PASSO = 6;
-const CARATTERE = { armonioso: "La più armoniosa", elegante: "Più elegante", audace: "Più audace" };
+const CARATTERE = { armonioso: "La più armoniosa", elegante: "Più elegante", audace: "Più audace", luminoso: "Più luminosa", scuro: "Più scura", sportivo: "Più sportiva", sobrio: "Più sobria", alternativa: "Un'altra idea" };
+const PER = { elegante: ", per un tono più formale", audace: ", per più colore e contrasto", luminoso: ", per un look più chiaro", scuro: ", per un look più scuro", sportivo: ", per un tono più rilassato", sobrio: ", per un look più calmo", alternativa: "" };
 let lista = { outfit: [], scelto: null, mostrati: 0 };
 const contaOutfit = (n) => (n === 1 ? "Una proposta" : `${Math.min(n, PRIMI)} proposte per te`);
 
 function altriOutfit() {
   const { outfit: tutti, scelto, mostrati, fissi = [scelto] } = lista;
   const nuovi = tutti.slice(mostrati, mostrati + (mostrati ? PASSO : PRIMI));
-  $("#lista-outfit").insertAdjacentHTML("beforeend", nuovi.map((o, i) => schedaOutfit(o, { i, scelto, fissi })).join(""));
+  $("#lista-outfit").insertAdjacentHTML("beforeend", nuovi.map((o, i) => schedaOutfit(o, { i, scelto, fissi, metti: true })).join(""));
   lista.mostrati += nuovi.length;
   const restano = tutti.length - lista.mostrati;
   const btn = $("#altri");
@@ -473,12 +474,13 @@ function vistaArcobaleno() {
 // ---------- il prossimo capo: i posti vuoti dell'armadio che sbloccano più outfit ----------
 const COMPAGNI = { base: "t-shirt e camicie", mid: "felpe e maglioni", bottom: "pantaloni", shoes: "paia di scarpe" };
 const miniLook = (o) => `<ul class="mini-look">${[...o.pezzi].sort((a, b) => ORDINE[a.slot] - ORDINE[b.slot]).map((p) => `<li${p.nuovo ? ' class="nuovo"' : ""}>${p.nuovo ? `<span class="cornice">${visuale(p)}</span>` : `<a class="cornice" href="#capo/${esc(p.id)}" title="${esc(nomeCapo(p))}">${visuale(p)}</a>`}</li>`).join("")}</ul>`;
+// un livello, non un numero: la stima è grezza, conta l'ordine
+const versatilita = (r) => (r >= 0.66 ? "Altissima" : r >= 0.33 ? "Alta" : "Buona");
 const STRATI_PROSSIMO = [["", "Tutto"], ["base", "Maglie e camicie"], ["mid", "Felpe e maglioni"], ["bottom", "Pantaloni"], ["shoes", "Scarpe"]];
 function vistaProssimo() {
   const attivi = filtra(st.capi, { stato: "attivo" });
   const strato = st.strato ?? "";
   const lista = prossimi(st.capi, { approvati: pezziApprovati(), ...(strato && { strato, quanti: 8 }) });
-  const n = (x) => x.toLocaleString("it-IT");
   main.innerHTML = `<div class="oggi prossimo">
     <a class="indietro" href="#armadio">Tutti i capi</a>
     <div class="oggi-testa"><div><p class="marca">Calcolato sui tuoi ${attivi.length} capi attivi</p><h1>Il prossimo capo</h1>
@@ -489,7 +491,7 @@ function vistaProssimo() {
       <div class="proposta-testo">
         <p class="marca">${i === 0 ? "Il più utile" : `${i + 1}° posto`}</p>
         <h2>${esc(x.nome)}</h2>
-        <p class="sblocca"><b>≈ ${n(x.nuovi)}</b> outfit nuovi</p>
+        <p class="sblocca"><b>${versatilita(x.valore / lista[0].valore)}</b> versatilità</p>
         <ul class="motivi">
           <li>Sta con ${Object.entries(x.compagni).filter(([s]) => s !== "mid" || x.compagni.mid).map(([s, k]) => `${k} ${COMPAGNI[s]}`).join(", ").replace(/, ([^,]*)$/, " e $1")} che hai.</li>
           ${x.vicino >= 1 ? `<li>Non hai ancora nessun capo di questo tipo.</li>` : x.vicino < 0.15 ? `<li>Il colore somiglia a un capo che hai già: in classifica conta un po' meno.</li>` : ""}
@@ -499,7 +501,7 @@ function vistaProssimo() {
         ${x.esempi.length ? `<p class="per-esempio">Per esempio</p>${x.esempi.map(miniLook).join("")}` : ""}
       </div>
     </li>`).join("")}</ol>` : `<p class="avviso">Il tuo armadio copre già bene ogni combinazione: nessun posto vuoto che valga la spesa.</p>`}
-    <p class="stima">Stime calcolate dai colori delle foto e dalle regole di stile: contano gli outfit con un buon punteggio, non tutte le combinazioni.</p>
+    <p class="stima">Versatilità = quanti outfit nuovi e ben riusciti il capo sblocca, rispetto al primo in lista. Stime dai colori delle foto e dalle regole di stile.</p>
   </div>`;
 }
 
@@ -516,7 +518,8 @@ function vistaPreferiti() {
       <p class="sottotitolo">Tocca il cuore su un outfit, in Oggi, Componi o nella scheda di un capo, per salvarlo qui. Toccalo di nuovo per toglierlo.${st.statico ? " Restano su questo dispositivo." : ""}</p></div></div>
     ${occasioni.length > 1 ? `<div class="seg filtro-pref" role="group" aria-label="Filtra per occasione"><button type="button" data-pref="" aria-pressed="${!occ}">Tutti</button>${occasioni.map(([v, t]) => `<button type="button" data-pref="${v}" aria-pressed="${occ === v}">${t}</button>`).join("")}</div>` : ""}
     ${preferiti.length ? `<div class="lookbook">${preferiti.map((pz, i) => schedaOutfit(valuta(pz, pz[0], st.approvati), { i, fissi: [], livello: 2, metti: true })).join("")}</div>`
-      : `<p class="avviso">${tutti.length ? "Nessun preferito per questa occasione." : "Ancora nessun preferito: tocca il cuore su un outfit che ti piace."}</p>`}
+      : tutti.length ? `<p class="avviso">Nessun preferito per questa occasione.</p>`
+      : `<div class="vuoto"><p>Ancora nessun outfit salvato. Parti da quello di oggi: se ti piace, tocca il cuore.</p><a class="btn primario" href="#oggi">Scopri l'outfit di oggi</a></div>`}
   </div>`;
 }
 
@@ -614,12 +617,15 @@ function fissa(s, id) {
   if (c) fissi.push(c);
   history.replaceState(null, "", fissi.length ? `#crea/${fissi.map((f) => f.id).join(",")}` : "#crea");
   if ($("#picker").open) $("#picker").close();
+  main.classList.add("fermo");
   vistaCrea();
   $(`[data-apri="${s}"]`).focus({ preventScroll: true });
 }
 
 // ---------- router ed eventi ----------
 function render() {
+  // l'entrata animata solo cambiando pagina: un filtro o un capo fissato ridisegnano senza lampo
+  main.classList.remove("fermo");
   const m = location.hash.match(/^#capo\/(\w+)/);
   const c = m && st.capi.find((x) => x.id === m[1]);
   const armadio = location.hash === "#armadio";
@@ -699,8 +705,8 @@ document.addEventListener("click", (e) => {
   }
   else if (t.dataset.chiudiPicker !== undefined) t.closest("dialog").close();
   else if (t.dataset.approva) approva(t);
-  else if (t.dataset.strato !== undefined) { st.strato = t.dataset.strato; vistaProssimo(); $(`[data-strato="${st.strato}"]`).focus(); }
-  else if (t.dataset.pref !== undefined) { st.filtroPref = t.dataset.pref; vistaPreferiti(); $(`[data-pref="${t.dataset.pref}"]`).focus(); }
+  else if (t.dataset.strato !== undefined) { st.strato = t.dataset.strato; main.classList.add("fermo"); vistaProssimo(); $(`[data-strato="${st.strato}"]`).focus(); }
+  else if (t.dataset.pref !== undefined) { st.filtroPref = t.dataset.pref; main.classList.add("fermo"); vistaPreferiti(); $(`[data-pref="${t.dataset.pref}"]`).focus(); }
   else if (t.dataset.mettiOggi) {
     // dal lookbook dritto in Oggi, già indossato
     const ids = t.dataset.mettiOggi.split(",");
@@ -718,7 +724,7 @@ document.addEventListener("click", (e) => {
     window.scrollTo(0, y);
     $(id ? `[data-appeso="${id}"]` : ".indietro").focus({ preventScroll: true });
   }
-  else if (t.id === "svuota") { history.replaceState(null, "", "#crea"); vistaCrea(); }
+  else if (t.id === "svuota") { history.replaceState(null, "", "#crea"); main.classList.add("fermo"); vistaCrea(); }
   else if (t.dataset.uscita) {
     st.uscita = t.dataset.uscita;
     localStorage.setItem("closetune-uscita", st.uscita);

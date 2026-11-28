@@ -525,7 +525,12 @@ test("tre: la più armoniosa, una più elegante, una più audace, mai ripetute",
   // cambiare solo la cintura non fa un carattere
   const [b1, b2] = m.prepara([k("b1", "cintura", "#3b2a20"), k("b2", "cintura", "#191d1f", ["elegante"])]);
   const r3 = m.tre([o([t, j, sn, b1], 0.95), o([t, j, sn, b2], 0.9)]);
-  assert.deepEqual(r3.map((x) => x.carattere), ["armonioso", null]);
+  assert.deepEqual(r3.map((x) => x.carattere), ["armonioso", "alternativa"], "solo la cintura: un'altra idea, non un carattere");
+  // senza elegante né audace, la seconda prende il nome dalla differenza vera
+  const [jl] = m.prepara([k("jl", "jeans", "#c9ced3")]);
+  const r4 = m.tre([o([t, j, sn], 0.95), o([t, jl, sn], 0.9)]);
+  assert.equal(r4[1].carattere, "luminoso");
+  assert.deepEqual(r4[1].cambia, [jl]);
   assert.deepEqual(m.tre([]), []);
   assert.deepEqual(m.tre([calmo]).map((x) => x.carattere), ["armonioso"]);
 });
@@ -674,4 +679,8 @@ test("prossimi per strato: solo capi di quello strato, più colori, al massimo 3
   assert.ok(Object.values(per).every((n) => n <= 3));
   // stessa categoria e stesso colore (pelle o tela) non si ripete
   assert.equal(new Set(r.map((x) => x.capo.categoria + x.capo.colore)).size, r.length);
+  // e diventa una proposta sola che dice entrambi i materiali
+  assert.ok(r.some((x) => / in pelle o in tela$/.test(x.nome)), r.map((x) => x.nome).join("; "));
+  const tutto = m.prossimi(armadio, { quanti: 20 });
+  assert.equal(new Set(tutto.map((x) => x.capo.categoria + x.capo.colore)).size, tutto.length, "niente doppioni nemmeno in Tutto");
 });

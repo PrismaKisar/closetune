@@ -378,7 +378,7 @@ export function diversi(outfit, n = 5, forza = 0.35) {
  * Tre proposte con un carattere ciascuna: la più armoniosa, una più elegante, una più audace.
  * Elegante = formalità media più alta; audace = più colore e stacco di luce. Solo tra le non azzardate
  * e mai due volte lo stesso outfit; se manca un carattere si prende il prossimo dei `diversi`.
- * Restituisce gli outfit con `carattere` ("armonioso" | "elegante" | "audace" | null).
+ * Restituisce le prime con `carattere` ("armonioso" | "elegante" | "audace" | "luminoso" | "scuro" | "sportivo" | "sobrio" | "alternativa").
  */
 export function tre(outfit) {
   const ordine = diversi(outfit);
@@ -395,7 +395,14 @@ export function tre(outfit) {
   // cosa cambia rispetto alla prima: la spiegazione parla della differenza, non ripete la stessa formula
   const cambia = (o) => o.pezzi.filter((p) => !primo.pezzi.includes(p));
   for (const [o, c] of [[elegante, "elegante"], [audace, "audace"]]) if (o) scelti.push({ ...o, carattere: c, cambia: cambia(o) });
-  for (const o of ordine) if (scelti.length < 3 && !scelti.some((x) => x.pezzi === o.pezzi)) scelti.push({ ...o, carattere: null });
+  // le altre prendono il nome dalla differenza più forte con la prima, mai due titoli uguali senza un perché
+  const luce = (o) => o.pezzi.reduce((s, p) => s + p.lch.L, 0) / o.pezzi.length;
+  const differenza = (o) => {
+    const d = [["luminoso", (luce(o) - luce(primo)) / 0.08], ["scuro", (luce(primo) - luce(o)) / 0.08],
+      ["sportivo", (formale(primo) - formale(o)) / 0.4], ["sobrio", (ardito(primo) - ardito(o)) / 0.15]].sort((a, b) => b[1] - a[1])[0];
+    return d[1] >= 1 ? d[0] : "alternativa";
+  };
+  for (const o of ordine) if (scelti.length < 3 && !scelti.some((x) => x.pezzi === o.pezzi)) scelti.push({ ...o, carattere: differenza(o), cambia: cambia(o) });
   return [...scelti, ...ordine.filter((o) => !scelti.some((x) => x.pezzi === o.pezzi))];
 }
 
@@ -706,11 +713,19 @@ export function prossimi(capi, { quanti = 4, campioni = 160, approvati = [], str
   // uno strato: la classifica dei singoli capi, al massimo 3 colori per tipo per non vedere solo sneaker
   const perTipo = new Map();
   for (const x of verificati) perTipo.has(x.archetipo) ? perTipo.get(x.archetipo).alternative.push(x) : perTipo.set(x.archetipo, { ...x, alternative: [] });
+  // stesso tipo e colore in due materiali (sneaker in pelle o in tela) = una proposta sola
+  const unisci = (lista) => lista.reduce((out, x) => {
+    const y = out.find((y) => y.capo.categoria === x.capo.categoria && y.capo.colore === x.capo.colore);
+    if (!y) return [...out, { ...x, materiali: [x.capo.materiale] }];
+    y.materiali.push(x.capo.materiale);
+    y.nome = `${x.capo.categoria[0].toUpperCase()}${x.capo.categoria.slice(1)} ${x.capo.colore}, ${y.materiali.map((m) => `in ${m}`).join(" o ")}`;
+    return out;
+  }, []);
   const conta = {};
   const scelti = strato
-    ? verificati.filter((x, i) => !verificati.slice(0, i).some((y) => y.capo.categoria === x.capo.categoria && y.capo.colore === x.capo.colore) && (conta[x.archetipo] = (conta[x.archetipo] ?? 0) + 1) <= 3).map((x) => ({ ...x, alternative: [] }))
-    : [...perTipo.values()];
-  return scelti.slice(0, quanti).map(({ liste, ...x }) => {
+    ? unisci(verificati).filter((x) => (conta[x.archetipo] = (conta[x.archetipo] ?? 0) + 1) <= 3).map((x) => ({ ...x, alternative: [] }))
+    : unisci([...perTipo.values()]);
+  return scelti.slice(0, quanti).map(({ liste, materiali, ...x }) => {
     const esempi = outfitDa([x.capo], pool, { n: 2, approvati }).outfit;
     return { ...x, alternative: x.alternative.slice(0, 3).map(({ capo, nome, nuovi }) => ({ capo, nome, nuovi })), esempi,
       compagni: Object.fromEntries(Object.entries(x.compagni).map(([s, l]) => [s, l.length])) };
