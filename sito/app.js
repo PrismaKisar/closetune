@@ -1,4 +1,4 @@
-import { FAMIGLIE, NOMI_SLOT, RELAZIONI, TIPI, delGiorno, filtra, giudizio, giudizioPelle, impostaPelle, ordineArcobaleno, outfit, outfitDa, percentuale, prepara, taraSuApprovati, valuta, alternative } from "./abbinamenti.js";
+import { diversi, staBene, FAMIGLIE, NOMI_SLOT, TIPI, titoloOutfit, delGiorno, faccette, filtra, giudizio, giudizioPelle, impostaPelle, ordineArcobaleno, outfit, outfitDa, percentuale, prepara, taraSuApprovati, valuta, alternative } from "./abbinamenti.js";
 
 const STAGIONI = ["primavera", "estate", "autunno", "inverno"];
 const OCCASIONI = ["casual", "smart-casual", "elegante", "sportivo", "outdoor"];
@@ -10,7 +10,7 @@ const TINTA = { chiari: "#efeadb", scuri: "#1e1e20", grigi: "#8d8f91", terra: "#
 
 const st = {
   capi: [], approvati: [],
-  f: { stato: "attivo", ruoli: [], tipi: [], famiglie: [], stagioni: [], occasioni: [], testo: "" },
+  f: { stato: "attivo", tipi: [], famiglie: [], stagioni: [], occasioni: [], testo: "" },
   pool: "attivo",
   giro: 0, // "Un altro" nell'outfit di oggi
 };
@@ -30,36 +30,39 @@ function visuale(c, grande = false) {
   return `<div class="campione${sec.length ? " multi" : ""}" style="--c:${esc(c.hex)}${fasce}" role="img" aria-label="${esc(cap(c.categoria))} ${esc(c.colore)}, senza foto"><span>${esc(c.hex)}</span></div>`;
 }
 
-function carta(c) {
+// tipo prima, poi colore, la marca per ultima; pos = posto nell'ordine per colore
+function carta(c, pos) {
   return `<li><a class="capo${c.stato !== "attivo" ? " spento" : ""}" href="#capo/${esc(c.id)}">
-    <div class="cornice">${visuale(c)}<span class="id" aria-label="numero ${esc(c.id)}">${esc(c.id)}</span></div>
+    <div class="cornice">${visuale(c)}${pos ? `<span class="pos">${pos}</span>` : ""}</div>
     <div class="capo-testo">
-      <span class="marca">${esc(marca(c) || "Senza marca")}</span>
       <span class="nome">${esc(cap(c.categoria))}</span>
       <span class="colore"><i style="--c:${esc(c.hex)}"></i>${esc(c.nomeColore)}${c.stato !== "attivo" ? ` <em>${ETICHETTA_STATO[c.stato] ?? esc(c.stato)}</em>` : ""}</span>
+      ${marca(c) ? `<span class="marca-capo">${esc(marca(c))}</span>` : ""}
     </div>
   </a></li>`;
 }
 
-const chip = (gruppo, v, etichetta, attivo, extra = "") =>
-  `<button type="button" class="chip" data-f="${gruppo}" data-v="${esc(v)}" aria-pressed="${attivo}" ${extra}>${etichetta}</button>`;
+const chip = (gruppo, v, etichetta, attivo, n = 0) =>
+  `<button type="button" class="chip" data-f="${gruppo}" data-v="${esc(v)}" aria-pressed="${attivo}" ${n || attivo ? "" : "disabled"}>${etichetta}<b>${n}</b></button>`;
+const STATI = [["attivo", "Attivi"], ["casa", "Da casa"], ["dismesso", "Dismessi"], ["tutti", "Tutti"]];
+const NOMI_FILTRO = { tipi: Object.fromEntries(TIPI), famiglie: Object.fromEntries(FAMIGLIE), stagioni: {}, occasioni: {} };
+const nCapi = (n) => `${n} ${n === 1 ? "capo" : "capi"}`;
 
 // ---------- vista armadio ----------
 function vistaArmadio() {
   main.innerHTML = `<div class="armadio">
     <aside class="filtri" id="filtri" aria-label="Filtri">
       <div class="filtri-testa"><h2>Filtri</h2><button type="button" class="chiudi" data-chiudi aria-label="Chiudi i filtri">×</button></div>
-      <div class="gruppo"><h3>Stato</h3><div class="seg" id="f-stato"></div></div>
-      <div class="gruppo"><h3>Strato</h3><div class="lista" id="f-ruoli"></div></div>
-      <div class="gruppo"><h3>Tipo di capo</h3><div class="lista" id="f-tipi"></div></div>
-      <div class="gruppo"><h3>Colore</h3><div class="lista" id="f-famiglie"></div></div>
-      <div class="gruppo"><h3>Stagione</h3><div class="chips" id="f-stagioni"></div></div>
-      <div class="gruppo"><h3>Occasione</h3><div class="chips" id="f-occasioni"></div></div>
-      <button type="button" class="azzera" id="azzera">Azzera filtri</button>
+      <div class="gruppo"><h3 id="t-famiglie">Colore</h3><div class="chips" id="f-famiglie" role="group" aria-labelledby="t-famiglie"></div></div>
+      <div class="gruppo"><h3 id="t-stagioni">Stagione</h3><div class="chips" id="f-stagioni" role="group" aria-labelledby="t-stagioni"></div></div>
+      <div class="gruppo"><h3 id="t-occasioni">Occasione</h3><div class="chips" id="f-occasioni" role="group" aria-labelledby="t-occasioni"></div></div>
+      <div class="gruppo"><h3 id="t-stato">Stato</h3><div class="seg" id="f-stato" role="group" aria-labelledby="t-stato"></div></div>
       <button type="button" class="btn mostra" id="mostra" data-chiudi></button>
     </aside>
     <section class="vetrina" aria-labelledby="titolo-vetrina">
-      <div class="vetrina-testa"><h1 id="titolo-vetrina">Il mio armadio</h1><a class="btn-arcobaleno" href="#arcobaleno" title="Ordine per l'armadio" aria-label="Ordine per l'armadio"></a><p id="n-risultati" aria-live="polite"></p></div>
+      <div class="vetrina-testa"><h1 id="titolo-vetrina">Il mio armadio</h1><p id="n-risultati" aria-live="polite"></p><a class="btn-arcobaleno" href="#arcobaleno"><i aria-hidden="true"></i>Organizza per colore</a></div>
+      <div class="tipi-rapidi" id="f-tipi" role="group" aria-label="Tipo di capo"></div>
+      <div class="attivi" id="attivi" role="group" aria-label="Filtri attivi"></div>
       <ul class="griglia" id="griglia"></ul>
     </section>
   </div>`;
@@ -68,34 +71,46 @@ function vistaArmadio() {
 
 function aggiornaArmadio() {
   const { f } = st;
-  const base = filtra(st.capi, { stato: f.stato });
-  const conta = (k, v) => base.filter((c) => (Array.isArray(c[k]) ? c[k].includes(v) : c[k] === v)).length;
-  $("#f-stato").innerHTML = [["attivo", "Attivi"], ["casa", "Da casa"], ["dismesso", "Dismessi"], ["tutti", "Tutti"]]
-    .map(([v, t]) => `<button type="button" data-stato="${v}" aria-pressed="${f.stato === v}">${t}</button>`).join("");
-  $("#f-ruoli").innerHTML = ["mid", "base", "bottom"].map((v) => {
-    const n = conta("slot", v);
-    return `<button type="button" class="riga" data-f="ruoli" data-v="${v}" aria-pressed="${f.ruoli.includes(v)}" ${n ? "" : "disabled"}><span>${RUOLO[v]}</span><b>${n}</b></button>`;
-  }).join("");
-  $("#f-tipi").innerHTML = TIPI.map(([v, t]) => {
-    const n = conta("tipo", v);
-    return `<button type="button" class="riga" data-f="tipi" data-v="${v}" aria-pressed="${f.tipi.includes(v)}" ${n ? "" : "disabled"}><span>${t}</span><b>${n}</b></button>`;
-  }).join("");
-  $("#f-famiglie").innerHTML = FAMIGLIE.map(([v, t]) => {
-    const n = conta("famiglia", v);
-    return `<button type="button" class="riga" data-f="famiglie" data-v="${v}" aria-pressed="${f.famiglie.includes(v)}" ${n ? "" : "disabled"}><span><i style="--c:${TINTA[v]}"></i>${t}</span><b>${n}</b></button>`;
-  }).join("");
-  $("#f-stagioni").innerHTML = STAGIONI.map((v) => chip("stagioni", v, cap(v), f.stagioni.includes(v))).join("");
-  $("#f-occasioni").innerHTML = OCCASIONI.map((v) => chip("occasioni", v, cap(v), f.occasioni.includes(v))).join("");
+  // il bottone premuto viene ridisegnato: il focus torna sul suo gemello
+  const a = document.activeElement, daAttivi = a?.parentElement?.id === "attivi";
+  const fuoco = a?.dataset?.v && a.parentElement?.id ? `#${a.parentElement.id} [data-f="${a.dataset.f}"][data-v="${a.dataset.v}"]`
+    : a?.dataset?.stato && a.parentElement?.id === "f-stato" ? `#f-stato [data-stato="${a.dataset.stato}"]`
+    : a?.dataset?.tipiTutti !== undefined ? "[data-tipi-tutti]" : "";
+  const [nTipi, nFam, nSta, nOcc] = ["tipi", "famiglie", "stagioni", "occasioni"].map((g) => faccette(st.capi, f, g));
+
+  $("#f-stato").innerHTML = STATI.map(([v, t]) => `<button type="button" data-stato="${v}" aria-pressed="${f.stato === v}">${t}</button>`).join("");
+  const totTipi = Object.values(nTipi).reduce((s, n) => s + n, 0);
+  $("#f-tipi").innerHTML = `<button type="button" class="chip" data-tipi-tutti aria-pressed="${!f.tipi.length}">Tutti<b>${totTipi}</b></button>`
+    + TIPI.filter(([v]) => nTipi[v] || f.tipi.includes(v)).map(([v, t]) => chip("tipi", v, t, f.tipi.includes(v), nTipi[v])).join("");
+  $("#f-famiglie").innerHTML = FAMIGLIE.map(([v, t]) => chip("famiglie", v, `<i style="--c:${TINTA[v]}"></i>${t}`, f.famiglie.includes(v), nFam[v])).join("");
+  $("#f-stagioni").innerHTML = STAGIONI.map((v) => chip("stagioni", v, cap(v), f.stagioni.includes(v), nSta[v])).join("");
+  $("#f-occasioni").innerHTML = OCCASIONI.map((v) => chip("occasioni", v, cap(v), f.occasioni.includes(v), nOcc[v])).join("");
+
+  // riepilogo dei filtri attivi, ognuno si toglie con un tocco
+  const togli = (attr, etichetta) => `<button type="button" class="chip togli" ${attr} aria-label="Togli il filtro ${esc(etichetta)}">${esc(etichetta)}<span aria-hidden="true">×</span></button>`;
+  const pillole = [
+    ...["tipi", "famiglie", "stagioni", "occasioni"].flatMap((g) => f[g].map((v) => togli(`data-f="${g}" data-v="${esc(v)}"`, NOMI_FILTRO[g][v] ?? cap(v)))),
+    f.stato !== "attivo" ? togli('data-stato="attivo"', Object.fromEntries(STATI)[f.stato]) : "",
+    f.testo.trim() ? togli("data-togli-testo", `“${f.testo.trim()}”`) : "",
+  ].filter(Boolean);
+  $("#attivi").innerHTML = pillole.length ? pillole.join("") + `<button type="button" class="azzera" id="azzera">Azzera tutto</button>` : "";
+  $("#attivi").hidden = !pillole.length;
 
   const risultati = filtra(st.capi, f).sort((a, b) => percentuale(b.materiale, f.testo) - percentuale(a.materiale, f.testo) || ORDINE[a.slot] - ORDINE[b.slot] || a.tipo.localeCompare(b.tipo) || b.lch.L - a.lch.L);
-  const attivi = f.ruoli.length + f.tipi.length + f.famiglie.length + f.stagioni.length + f.occasioni.length + (f.testo ? 1 : 0);
-  $("#azzera").hidden = !attivi;
-  $("#apri-filtri").textContent = attivi ? `Filtri · ${attivi}` : "Filtri";
-  $("#mostra").textContent = `Mostra ${risultati.length} ${risultati.length === 1 ? "capo" : "capi"}`;
-  $("#n-risultati").textContent = `${risultati.length} ${risultati.length === 1 ? "capo" : "capi"}`;
+  const avanzati = f.famiglie.length + f.stagioni.length + f.occasioni.length + (f.stato !== "attivo" ? 1 : 0);
+  // il numero va in un badge: il bottone non si allarga e l'header non va a capo
+  const bf = $("#apri-filtri");
+  bf.toggleAttribute("data-n", !!avanzati);
+  if (avanzati) bf.dataset.n = avanzati;
+  bf.setAttribute("aria-label", avanzati ? `Filtri, ${avanzati} attivi` : "Filtri");
+  $("#mostra").textContent = `Mostra ${nCapi(risultati.length)}`;
+  $("#n-risultati").textContent = nCapi(risultati.length);
   $("#griglia").innerHTML = risultati.length
-    ? risultati.map(carta).join("")
+    ? risultati.map((c) => carta(c)).join("")
     : `<li class="vuoto"><p>Nessun capo con questi filtri.</p><button type="button" class="btn" data-azzera>Azzera filtri</button></li>`;
+  // tolto dal riepilogo: il focus passa al filtro attivo successivo, o ai tipi
+  const prossimo = (fuoco && $(fuoco)) || (daAttivi && ($("#attivi:not([hidden]) button") || $("[data-tipi-tutti]")));
+  if (prossimo) prossimo.focus();
 }
 
 // ---------- vista dettaglio ----------
@@ -136,49 +151,66 @@ function striscia(pezzi) {
 }
 
 const SCAMBIA = `<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 7h11.5m-3-3 3 3-3 3M16 13H4.5m3 3-3-3 3-3"/></svg>`;
+// i due voti a parole: sono stime, non misure
+const ARMONIA = { Ottimo: "ottima", Buono: "buona", Discreto: "discreta", Azzardato: "azzardata" };
+const SU_PELLE = { Valorizza: "ti valorizza", Bene: "bene", Neutro: "indifferente", Spegne: "ti spegne" };
+const SPIEGA_ARMONIA = "Stima di quanto i colori stanno bene tra loro";
+const SPIEGA_PELLE = "Stima di quanto i colori vicino al viso valorizzano la tua carnagione";
+
 function schedaOutfit(o, i, scelto, inGruppo = i, fissi = [scelto], cambia = false) {
   const pezzi = [...o.pezzi].sort((a, b) => ORDINE[a.slot] - ORDINE[b.slot]);
-  const titolo = RELAZIONI[o.perche[0]?.tipo]?.nome ?? "Abbinamento";
-  const voto = Math.round(o.punteggio * 100);
+  const g = giudizio(o.punteggio), voto = Math.round(o.punteggio * 100);
+  const gp = o.pelle !== undefined ? giudizioPelle(o.pelle) : null;
+  // in sintesi il motivo principale (il meteo è già in testa alla pagina)
+  const sintesi = o.perche.find((m) => m.tipo !== "meteo");
+  const ruolo = (p) => (p.slot === "base" && !pezzi.some((x) => x.slot === "mid") ? "Sopra" : RUOLO[p.slot]);
   return `<article class="outfit" style="--i:${inGruppo}">
     <header class="outfit-testa">
       <span class="num">${String(i + 1).padStart(2, "0")}</span>
-      <h3>${esc(titolo)}</h3>
-      ${o.pelle !== undefined ? `<span class="pelle" data-v="${giudizioPelle(o.pelle)}" title="Con la tua pelle: ${Math.round(o.pelle * 100)} su 100">Pelle <b>${giudizioPelle(o.pelle)}</b></span>` : ""}
-      <span class="armonia" title="Armonia ${voto} su 100"><span class="armonia-barra" aria-hidden="true"><i style="width:${voto}%"></i></span><b>${giudizio(o.punteggio)}</b></span>
+      <h3>${esc(titoloOutfit(pezzi))}</h3>
+      <span class="armonia" data-v="${g}" title="${SPIEGA_ARMONIA}: ${voto} su 100">Armonia <b>${ARMONIA[g]}</b></span>
       ${st.statico ? "" : bottoneCuore(o.pezzi)}
     </header>
-    <div class="outfit-corpo">
-      <ul class="pezzi" style="--n:${pezzi.length}">${pezzi.map((p) => `<li><a class="pezzo${fissi.includes(p) ? " attuale" : ""}" href="#capo/${esc(p.id)}"${fissi.includes(p) ? ' aria-current="true"' : ""}>
-        <div class="cornice">${visuale(p)}<span class="id" aria-label="numero ${esc(p.id)}">${esc(p.id)}</span></div>
-        <span class="ruolo">${p.slot === "base" && !pezzi.some((x) => x.slot === "mid") ? "Sopra" : RUOLO[p.slot]}</span>
-        <span class="pezzo-nome">${esc(marca(p) || cap(p.categoria))}</span>
-        <span class="pezzo-colore"><i style="--c:${esc(p.hex)}"></i><span>${esc(p.nomeColore)}</span></span>
-      </a>${cambia ? `<button type="button" class="cambia" data-cambia="${esc(p.slot)}" aria-pressed="${st.cambiaSlot === p.slot}" aria-label="Cambia: ${esc(RUOLO[p.slot])}" title="Cambia questo">${SCAMBIA}</button>` : ""}</li>`).join("")}</ul>
-      <div class="palette">
-        ${striscia(pezzi)}
-        <div class="palette-grafici">${ruota(pezzi, scelto)}${luce(pezzi)}</div>
-        <ul class="motivi">${o.perche.map((m) => `<li data-tipo="${esc(m.tipo)}">${esc(m.testo)}</li>`).join("")}</ul>
+    <ul class="pezzi" style="--n:${pezzi.length}">${pezzi.map((p) => `<li><a class="pezzo${fissi.includes(p) ? " attuale" : ""}" href="#capo/${esc(p.id)}"${fissi.includes(p) ? ' aria-current="true"' : ""} title="${esc(cap(p.categoria))} ${esc(p.colore)}${marca(p) ? ", " + esc(marca(p)) : ""}">
+      <div class="cornice">${visuale(p)}</div>
+      <span class="ruolo">${ruolo(p)}</span>
+      <span class="pezzo-nome">${esc(marca(p) || cap(p.categoria))}</span>
+    </a>${cambia ? `<button type="button" class="cambia" data-cambia="${esc(p.slot)}" aria-pressed="${st.cambiaSlot === p.slot}" aria-label="Cambia: ${esc(RUOLO[p.slot])}" title="Cambia questo">${SCAMBIA}</button>` : ""}</li>`).join("")}</ul>
+    ${sintesi ? `<p class="sintesi">${esc(sintesi.testo)}</p>` : ""}
+    <details class="perche">
+      <summary>${g === "Azzardato" ? "Perché è un azzardo" : "Perché funziona"}</summary>
+      <div class="perche-corpo">
+        <div class="palette">
+          ${striscia(pezzi)}
+          <div class="palette-grafici">${ruota(pezzi, scelto)}${luce(pezzi)}</div>
+        </div>
+        <div class="perche-testo">
+          <dl class="voti">
+            <div title="${SPIEGA_ARMONIA}"><dt>Armonia</dt><dd><b>${ARMONIA[g]}</b> · ${voto}/100<small>${SPIEGA_ARMONIA.toLowerCase().replace("stima di ", "")}</small></dd></div>
+            ${gp ? `<div title="${SPIEGA_PELLE}"><dt>Con la tua pelle</dt><dd data-v="${gp}"><b>${SU_PELLE[gp]}</b> · ${Math.round(o.pelle * 100)}/100<small>${SPIEGA_PELLE.toLowerCase().replace("stima di ", "")}</small></dd></div>` : ""}
+          </dl>
+          <ul class="motivi">${o.perche.filter((m) => m !== sintesi).map((m) => `<li data-tipo="${esc(m.tipo)}">${esc(m.testo)}</li>`).join("")}</ul>
+          <p class="stima">Sono stime calcolate dai colori delle foto, non regole.</p>
+        </div>
       </div>
-    </div>
+    </details>
   </article>`;
 }
 
-// gli abbinamenti arrivano a gruppi mentre scorri: tutti, senza costruire centinaia di schede in una volta
-const PASSO = 6;
+// prima i 5 migliori diversi tra loro (diversi), poi gli altri a gruppi, solo su richiesta
+const PRIMI = 5, PASSO = 6;
 let lista = { outfit: [], scelto: null, mostrati: 0 };
-let osservatore = null;
+const contaOutfit = (n, nome = "outfit") => n > PRIMI ? `I ${PRIMI} migliori, diversi tra loro · ${n} in tutto` : `${n} ${nome}, dal migliore`;
 
 function altriOutfit() {
   const { outfit: tutti, scelto, mostrati, fissi = [scelto] } = lista;
-  const nuovi = tutti.slice(mostrati, mostrati + PASSO);
+  const nuovi = tutti.slice(mostrati, mostrati + (mostrati ? PASSO : PRIMI));
   $("#lista-outfit").insertAdjacentHTML("beforeend", nuovi.map((o, i) => schedaOutfit(o, mostrati + i, scelto, i, fissi)).join(""));
   lista.mostrati += nuovi.length;
   const restano = tutti.length - lista.mostrati;
   const btn = $("#altri");
   btn.hidden = restano <= 0;
   btn.textContent = `Mostra altri ${Math.min(PASSO, restano)} · ne restano ${restano}`;
-  if (restano <= 0) osservatore?.disconnect();
 }
 
 function vistaDettaglio(c) {
@@ -201,6 +233,7 @@ function vistaDettaglio(c) {
       <div class="cornice grande">${visuale(c, true)}</div>
       <p class="marca">${esc(marca(c) || "Senza marca")} · <span>${esc(c.id)}</span></p>
       <h1 id="titolo-capo">${esc(cap(c.categoria))}</h1>
+      <details class="dettagli-capo"${matchMedia("(max-width: 600px)").matches ? "" : " open"}><summary>Dettagli del capo</summary>
       <dl class="info">${righe.map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`).join("")}</dl>
       ${c.note ? `<p class="note">${esc(c.note)}</p>` : ""}
       <div class="azioni-capo"${st.statico ? " hidden" : ""}>
@@ -208,7 +241,7 @@ function vistaDettaglio(c) {
           ? `<button type="button" class="btn-stato" data-cambia-stato="casa">Segna da casa</button><button type="button" class="btn-stato" data-cambia-stato="dismesso">Segna come dismesso</button>`
           : `<button type="button" class="btn-stato riattiva" data-cambia-stato="attivo">Rimetti tra gli attivi</button>`}
         <p class="esito" role="status"></p>
-      </div>
+      </div></details>
     </section>
     <section class="abbinamenti" aria-labelledby="titolo-abb">
       <div class="abb-testa">
@@ -220,16 +253,14 @@ function vistaDettaglio(c) {
       </div>
       ${c.stato === "casa" ? `<p class="avviso">Capo da casa: è censito ma non entra negli abbinamenti.</p>` : ""}
       ${mancanti.length ? `<p class="avviso">Nessun capo ${st.pool === "attivo" ? "attivo " : ""}adatto tra: <b>${esc(nomiMancanti)}</b>.${st.pool === "attivo" ? ' <button type="button" class="link" data-pool="tutti">Cerca anche tra i dismessi</button>' : ""}</p>` : ""}
-      ${approvati.length ? `<div class="approvati"><h3>Già approvati</h3><ul>${approvati.map((o) => `<li>${o.map((p) => `<a href="#capo/${esc(p.id)}" title="${esc(cap(p.categoria))} ${esc(p.colore)}"><i style="--c:${esc(p.hex)}"></i>${esc(cap(p.categoria))}${marca(p) ? ` <span>${esc(marca(p))}</span>` : ""}</a>`).join("")}</li>`).join("")}</ul></div>` : ""}
-      ${proposti.length ? `<p class="n-abb" aria-live="polite">${proposti.length} ${proposti.length === 1 ? "abbinamento" : "abbinamenti"}, dal migliore</p>` : ""}
+      ${approvati.length ? `<div class="approvati"><h3>${CUORE}Nei tuoi preferiti · ${approvati.length}</h3><ul>${approvati.map((o) => `<li aria-label="${esc(titoloOutfit(o))}">${[...o].sort((a, b) => ORDINE[a.slot] - ORDINE[b.slot]).map((p) => `<a href="#capo/${esc(p.id)}" class="${p === c ? "attuale" : ""}" title="${esc(cap(p.categoria))} ${esc(p.colore)}${marca(p) ? ", " + esc(marca(p)) : ""}"><div class="cornice">${visuale(p)}</div></a>`).join("")}</li>`).join("")}</ul></div>` : ""}
+      ${proposti.length ? `<p class="n-abb" aria-live="polite">${proposti.length === 1 ? "1 abbinamento" : contaOutfit(proposti.length, "abbinamenti")}</p>` : ""}
       <div id="lista-outfit"></div>
       <button type="button" class="btn altri" id="altri" hidden></button>
     </section>
   </div>`;
-  lista = { outfit: proposti, scelto: c, mostrati: 0 };
+  lista = { outfit: diversi(proposti), scelto: c, mostrati: 0 };
   altriOutfit();
-  osservatore = new IntersectionObserver((e) => e[0].isIntersecting && altriOutfit(), { rootMargin: "800px 0px" });
-  osservatore.observe($("#altri"));
 }
 
 // ---------- meteo (Open-Meteo: gratis, senza chiave) ----------
@@ -275,7 +306,6 @@ function vistaOggi() {
   const riga = meteo ? `${esc(meteo.nome)} · ${Math.round(meteo.min)}–${Math.round(meteo.max)}°C${meteo.pioggia >= 30 ? ` · pioggia ${meteo.pioggia}%` : ""}`
     : st.meteo?.citta === citta && st.meteo.errore ? esc(st.meteo.errore) : citta ? "Leggo il meteo…" : esc(cap(stagione));
   main.innerHTML = `<div class="oggi">
-    <a class="indietro" href="#">Tutti i capi</a>
     <div class="oggi-testa">
       <div><p class="marca">${esc(cap(data))} · <span id="meteo">${riga}</span></p><h1>Outfit di oggi</h1></div>
       <div class="oggi-azioni">
@@ -296,8 +326,9 @@ function sceltaAlternative(o, slot, pool) {
     <h3>Al posto di: ${esc(RUOLO[slot].toLowerCase())} · dalla migliore</h3>
     ${alt.length ? `<ul>${alt.map((a) => {
       const c = a.pezzi.find((p) => p.slot === slot);
-      return `<li><button type="button" data-scegli="${esc(c.id)}" title="${esc(cap(c.categoria))} ${esc(c.colore)}${marca(c) ? ", " + esc(marca(c)) : ""}">
-        <div class="cornice">${visuale(c)}<span class="id">${esc(c.id)}</span></div><span class="voto" title="Armonia su 100">${Math.round(a.punteggio * 100)}</span></button></li>`;
+      const g = giudizio(a.punteggio);
+      return `<li><button type="button" data-scegli="${esc(c.id)}" title="${esc(cap(c.categoria))} ${esc(c.colore)}${marca(c) ? ", " + esc(marca(c)) : ""} · armonia ${Math.round(a.punteggio * 100)}/100">
+        <div class="cornice">${visuale(c)}</div><span class="armonia" data-v="${g}">${ARMONIA[g]}</span></button></li>`;
     }).join("")}</ul>` : `<p class="avviso">Nessun'altra scelta sta bene col resto.</p>`}
   </div>`;
 }
@@ -317,8 +348,9 @@ function vistaArcobaleno() {
   const capi = ordineArcobaleno(st.capi);
   main.innerHTML = `<div class="oggi arcobaleno">
     <a class="indietro" href="#">Tutti i capi</a>
-    <div class="oggi-testa"><div><p class="marca">${capi.length} capi sopra · dal primo all'ultimo</p><h1>Ordine per l'armadio</h1></div></div>
-    <ol class="griglia">${capi.map(carta).join("")}</ol>
+    <div class="oggi-testa"><div><p class="marca">${capi.length} capi sopra · da appendere in quest'ordine</p><h1>Organizza per colore</h1></div></div>
+    <ol class="sequenza" aria-label="La sequenza, da sinistra a destra">${capi.map((c, i) => `<li style="--c:${esc(c.hex)}" title="${i + 1}. ${esc(nomeCapo(c))}"><span>${i + 1}</span></li>`).join("")}</ol>
+    <ol class="griglia">${capi.map((c, i) => carta(c, i + 1)).join("")}</ol>
   </div>`;
 }
 
@@ -327,7 +359,6 @@ const CUORE = `<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 16.8S2.6
 function vistaPreferiti() {
   const preferiti = pezziApprovati().filter((p) => p.length).reverse();
   main.innerHTML = `<div class="oggi preferiti">
-    <a class="indietro" href="#">Tutti i capi</a>
     <div class="oggi-testa"><div><p class="marca">${preferiti.length} outfit · dal più recente</p><h1>Preferiti</h1></div></div>
     ${preferiti.length ? preferiti.map((pz, i) => schedaOutfit(valuta(pz, pz[0], st.approvati), i, pz[0], i, [])).join("")
       : `<p class="avviso">Ancora nessun preferito: tocca il cuore su un outfit che ti piace.</p>`}
@@ -336,56 +367,86 @@ function vistaPreferiti() {
 
 // ---------- outfit builder: scegli i capi, completa il resto ----------
 const fissiDaHash = () => (location.hash.match(/^#crea\/([\w,]+)/)?.[1].split(",") ?? [])
-  .map((id) => st.capi.find((c) => c.id === id)).filter(Boolean);
+  .map((id) => st.capi.find((c) => c.id === id)).filter((c, i, a) => c && a.findIndex((x) => x?.slot === c.slot) === i);
+const SLOT_CREA = ["mid", "base", "bottom", "shoes", "belt"];
+const X = `<svg viewBox="0 0 20 20" aria-hidden="true"><path d="m5.5 5.5 9 9m0-9-9 9"/></svg>`;
+const nomeCapo = (c) => `${cap(c.categoria)} ${c.nomeColore}${marca(c) ? ", " + marca(c) : ""}`;
+
+// cinque caselle, una per strato: o il capo fissato o "Auto" (lo completa closetune)
+function slotCrea(s, c) {
+  return `<li class="slot${c ? " pieno" : ""}">
+    <button type="button" class="slot-apri" data-apri="${s}" aria-haspopup="dialog" aria-label="${RUOLO[s]}: ${c ? `${esc(nomeCapo(c))}, fissato. Cambia` : "automatico. Scegli un capo"}">
+      <span class="cornice">${c ? visuale(c) : `<span class="auto" aria-hidden="true">Auto</span>`}</span>
+      <span class="ruolo">${RUOLO[s]}</span>
+      <span class="slot-stato">${c ? esc(marca(c) || cap(c.categoria)) : "Scegli"}</span>
+    </button>
+    ${c ? `<button type="button" class="slot-togli" data-auto="${s}" aria-label="Togli ${esc(nomeCapo(c))}">${X}</button>` : ""}
+  </li>`;
+}
 
 function vistaCrea() {
   const fissi = fissiDaHash();
-  const scegli = filtra(st.capi, { stato: "attivo" });
   main.innerHTML = `<div class="oggi crea">
-    <a class="indietro" href="#">Tutti i capi</a>
-    <div class="oggi-testa"><div><p class="marca">Uno per tipo · il resto lo scelgo io</p><h1>Crea outfit</h1></div>
+    <div class="oggi-testa"><div><p class="marca">Fissa i capi che vuoi · il resto lo scelgo io</p><h1>Componi</h1></div>
       <button type="button" class="btn" id="svuota"${fissi.length ? "" : " hidden"}>Ricomincia</button></div>
-    ${["mid", "base", "bottom", "shoes", "belt"].map((s) => `<div class="scelta">
-      <h3>${RUOLO[s]}</h3>
-      <ul>${scegli.filter((c) => c.slot === s).sort((a, b) => b.lch.L - a.lch.L).map((c) => `<li><button type="button" class="pezzo" data-fisso="${esc(c.id)}" aria-pressed="${fissi.includes(c)}" title="${esc(cap(c.categoria))} ${esc(c.colore)}${marca(c) ? ", " + esc(marca(c)) : ""}">
-        <div class="cornice">${visuale(c)}<span class="id">${esc(c.id)}</span></div></button></li>`).join("")}</ul>
-    </div>`).join("")}
+    <ul class="slot-crea" aria-label="Il tuo outfit">${SLOT_CREA.map((s) => slotCrea(s, fissi.find((f) => f.slot === s))).join("")}</ul>
     <div id="risultati-crea"></div>
+    <dialog class="picker" id="picker" aria-labelledby="picker-titolo"></dialog>
   </div>`;
   risultatiCrea();
 }
 
+function apriPicker(s) {
+  const fissi = fissiDaHash();
+  const attuale = fissi.find((f) => f.slot === s);
+  const altri = fissi.filter((f) => f !== attuale);
+  // ponytail: controllo a coppie (stagione, formalità, gusto), non l'outfit intero; basta a mettere in fondo i capi che non vanno
+  const ok = new Set(filtra(st.capi, { stato: "attivo" }).filter((c) => c.slot === s && staBene(altri, c)));
+  const capi = filtra(st.capi, { stato: "attivo" }).filter((c) => c.slot === s).sort((a, b) => ok.has(b) - ok.has(a) || b.lch.L - a.lch.L);
+  const primoNo = capi.find((c) => !ok.has(c));
+  const d = $("#picker");
+  d.dataset.slot = s;
+  d.innerHTML = `<div class="picker-dentro">
+    <div class="picker-testa"><div><h2 id="picker-titolo">${RUOLO[s]}</h2><p>${NOMI_SLOT[s] === RUOLO[s].toLowerCase() ? "" : `${esc(cap(NOMI_SLOT[s]))} · `}${capi.length} capi</p></div>
+      <button type="button" class="picker-chiudi" data-chiudi-picker aria-label="Chiudi">${X}</button></div>
+    <ul class="picker-griglia">
+      <li><button type="button" class="opzione" data-auto="${s}" aria-pressed="${!attuale}"><span class="cornice"><span class="auto" aria-hidden="true">Auto</span></span><span class="opzione-nome">Automatico</span><span class="opzione-colore">lo scelgo io</span></button></li>
+      ${capi.map((c) => `${c === primoNo ? `<li class="picker-sep" role="presentation">Non vanno con i capi già fissati</li>` : ""}<li><button type="button" class="opzione${ok.has(c) ? "" : " no"}" data-metti="${esc(c.id)}" aria-pressed="${c === attuale}" aria-label="${esc(nomeCapo(c))}${ok.has(c) ? "" : ", non va con i capi fissati"}">
+        <span class="cornice">${visuale(c)}</span>
+        <span class="opzione-nome">${esc(cap(c.categoria))}</span>
+        <span class="opzione-colore"><i style="--c:${esc(c.hex)}"></i>${esc(c.nomeColore)}</span>${marca(c) ? `<span class="marca-capo">${esc(marca(c))}</span>` : ""}</button></li>`).join("")}
+    </ul></div>`;
+  d.showModal();
+  d.querySelector('[aria-pressed="true"]').focus();
+}
+
 function risultatiCrea() {
-  osservatore?.disconnect();
   const fissi = fissiDaHash();
   const box = $("#risultati-crea");
-  if (!fissi.length) { box.innerHTML = `<p class="avviso">Tocca uno o più capi qui sopra: ti propongo gli outfit, dal migliore.</p>`; return; }
+  if (!fissi.length) { box.innerHTML = `<p class="avviso">Tocca una casella e scegli almeno un capo: il resto lo completo io, dal migliore.</p>`; return; }
   const { outfit: proposti, mancanti, vietato } = outfitDa(fissi, filtra(st.capi, { stato: "attivo" }), { approvati: st.approvati });
   if (vietato) { box.innerHTML = `<p class="avviso">${esc(vietato)} Togli uno dei due capi.</p>`; return; }
   box.innerHTML = `${mancanti.length ? `<p class="avviso">Nessun capo adatto tra: <b>${esc(mancanti.map((s) => NOMI_SLOT[s]).join(", "))}</b>.</p>` : ""}
-    <p class="n-abb" aria-live="polite">${proposti.length ? `${proposti.length} outfit, dal migliore` : "Questi capi non stanno insieme: stagione, formalità o stile troppo diversi."}</p>
+    <p class="n-abb" aria-live="polite">${proposti.length ? contaOutfit(proposti.length) : "Questi capi non stanno insieme: stagione, formalità o stile troppo diversi."}</p>
     <div id="lista-outfit"></div>
     <button type="button" class="btn altri" id="altri" hidden></button>`;
-  lista = { outfit: proposti, scelto: fissi[0], fissi, mostrati: 0 };
+  lista = { outfit: diversi(proposti), scelto: fissi[0], fissi, mostrati: 0 };
   altriOutfit();
-  osservatore = new IntersectionObserver((e) => e[0].isIntersecting && altriOutfit(), { rootMargin: "800px 0px" });
-  osservatore.observe($("#altri"));
 }
 
-// un capo per strato: sceglierne un altro dello stesso strato lo sostituisce
-function toggleFisso(id) {
-  const c = st.capi.find((x) => x.id === id);
-  let fissi = fissiDaHash();
-  fissi = fissi.includes(c) ? fissi.filter((f) => f !== c) : [...fissi.filter((f) => f.slot !== c.slot), c];
+// un capo per strato: id = quel capo, null = torna "Auto"
+function fissa(s, id) {
+  const fissi = fissiDaHash().filter((f) => f.slot !== s);
+  const c = id && st.capi.find((x) => x.id === id);
+  if (c) fissi.push(c);
   history.replaceState(null, "", fissi.length ? `#crea/${fissi.map((f) => f.id).join(",")}` : "#crea");
-  document.querySelectorAll("[data-fisso]").forEach((b) => b.setAttribute("aria-pressed", fissi.some((f) => f.id === b.dataset.fisso)));
-  $("#svuota").hidden = !fissi.length;
-  risultatiCrea();
+  if ($("#picker").open) $("#picker").close();
+  vistaCrea();
+  $(`[data-apri="${s}"]`).focus({ preventScroll: true });
 }
 
 // ---------- router ed eventi ----------
 function render() {
-  osservatore?.disconnect();
   const m = location.hash.match(/^#capo\/(\w+)/);
   const c = m && st.capi.find((x) => x.id === m[1]);
   const oggi = location.hash === "#oggi";
@@ -393,21 +454,22 @@ function render() {
   const crea = location.hash.startsWith("#crea");
   const preferiti = location.hash === "#preferiti";
   document.body.classList.toggle("in-dettaglio", !!c || oggi || arcobaleno || crea || preferiti);
-  $("#vai-preferiti").toggleAttribute("aria-current", preferiti);
-  $("#vai-crea").toggleAttribute("aria-current", crea);
+  // la sezione corrente: "page" sulla pagina stessa, "true" sulle sottopagine dell'armadio
+  const corrente = { "vai-oggi": oggi && "page", "vai-crea": crea && "page", "vai-preferiti": preferiti && "page",
+    "vai-armadio": !(oggi || crea || preferiti) && (c || arcobaleno ? "true" : "page") };
+  for (const [id, v] of Object.entries(corrente)) v ? $(`#${id}`).setAttribute("aria-current", v) : $(`#${id}`).removeAttribute("aria-current");
   document.body.classList.remove("filtri-aperti");
-  $("#vai-oggi").toggleAttribute("aria-current", oggi);
   if (preferiti) {
     vistaPreferiti();
     document.title = "Preferiti · closetune";
     window.scrollTo(0, 0);
   } else if (crea) {
     vistaCrea();
-    document.title = "Crea outfit · closetune";
+    document.title = "Componi · closetune";
     window.scrollTo(0, 0);
   } else if (arcobaleno) {
     vistaArcobaleno();
-    document.title = "Ordine per l'armadio · closetune";
+    document.title = "Organizza per colore · closetune";
     window.scrollTo(0, 0);
   } else if (oggi) {
     vistaOggi();
@@ -430,20 +492,28 @@ function toggle(lista, v) {
   i < 0 ? lista.push(v) : lista.splice(i, 1);
 }
 
+// tocco fuori dal pannello di scelta (sullo sfondo del dialog) = chiudi
+document.addEventListener("click", (e) => e.target.id === "picker" && e.target.close());
 document.addEventListener("click", (e) => {
   const t = e.target.closest("button, a");
   if (!t) return;
   if (t.matches("a.capo")) st.scrollGriglia = window.scrollY;
   if (t.dataset.f) { toggle(st.f[t.dataset.f], t.dataset.v); aggiornaArmadio(); }
   else if (t.dataset.stato) { st.f.stato = t.dataset.stato; st.pool = t.dataset.stato === "attivo" ? "attivo" : "tutti"; aggiornaArmadio(); }
+  else if (t.dataset.tipiTutti !== undefined) { st.f.tipi = []; aggiornaArmadio(); }
+  else if (t.dataset.togliTesto !== undefined) { st.f.testo = ""; $("#cerca").value = ""; aggiornaArmadio(); }
   else if (t.id === "azzera" || t.dataset.azzera !== undefined) {
-    Object.assign(st.f, { ruoli: [], tipi: [], famiglie: [], stagioni: [], occasioni: [], testo: "" });
+    Object.assign(st.f, { stato: "attivo", tipi: [], famiglie: [], stagioni: [], occasioni: [], testo: "" });
+    st.pool = "attivo";
     $("#cerca").value = "";
     aggiornaArmadio();
   } else if (t.dataset.cambiaStato) cambiaStato(t);
   else if (t.dataset.pool) { st.pool = t.dataset.pool; render(); }
   else if (t.id === "altri") altriOutfit();
-  else if (t.dataset.fisso) toggleFisso(t.dataset.fisso);
+  else if (t.dataset.apri) apriPicker(t.dataset.apri);
+  else if (t.dataset.metti) fissa($("#picker").dataset.slot, t.dataset.metti);
+  else if (t.dataset.auto) fissa(t.dataset.auto, null);
+  else if (t.dataset.chiudiPicker !== undefined) $("#picker").close();
   else if (t.dataset.approva) approva(t);
   else if (t.id === "svuota") { history.replaceState(null, "", "#crea"); vistaCrea(); }
   else if (t.id === "rimescola") { st.giro++; st.oggiPezzi = st.cambiaSlot = null; vistaOggi(); }

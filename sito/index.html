@@ -24,18 +24,21 @@
       </g>
     </symbol>
   </svg>
-  <a class="skip" href="#contenuto">Vai ai capi</a>
+  <a class="skip" href="#contenuto">Vai al contenuto</a>
   <header class="top">
     <a class="marchio lockup" href="#" aria-label="closetune, torna a tutti i capi"><svg class="m" aria-hidden="true"><use href="#marchio"/></svg><span>closetune</span></a>
+    <nav class="nav" aria-label="Sezioni">
+      <a class="tab" id="vai-oggi" href="#oggi"><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="3.6"/><path d="M10 1.8v2.4M10 15.8v2.4M1.8 10h2.4M15.8 10h2.4M4.2 4.2l1.7 1.7M14.1 14.1l1.7 1.7M4.2 15.8l1.7-1.7M14.1 5.9l1.7-1.7"/></svg><span>Oggi</span></a>
+      <a class="tab" id="vai-armadio" href="#"><svg viewBox="0 0 20 20" aria-hidden="true"><rect x="3.2" y="2.6" width="13.6" height="14.8" rx="1.6"/><path d="M10 2.6v14.8M7.6 9.2v1.6M12.4 9.2v1.6"/></svg><span>Armadio</span></a>
+      <a class="tab" id="vai-crea" href="#crea"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 4.2a1.8 1.8 0 1 1 1.8 1.8L10 7.2M10 7.2 2.6 12.4c-.8.6-.4 1.6.5 1.6h13.8c.9 0 1.3-1 .5-1.6Z"/></svg><span>Componi</span></a>
+      <a class="tab tab-preferiti" id="vai-preferiti" href="#preferiti"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 16.8S2.6 12.4 2.6 7.3A3.9 3.9 0 0 1 10 5.4a3.9 3.9 0 0 1 7.4 1.9c0 5.1-7.4 9.5-7.4 9.5Z"/></svg><span>Preferiti</span></a>
+    </nav>
     <label class="cerca">
       <span class="sr">Cerca un capo</span>
       <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="9" cy="9" r="6"/><path d="m13.5 13.5 4 4"/></svg>
       <input id="cerca" type="search" placeholder="Cerca" title="Cerca per marca, colore, tipo o materiale" aria-label="Cerca per marca, colore, tipo o materiale" autocomplete="off">
     </label>
     <p class="conteggio" id="riassunto"></p>
-    <a class="btn-oggi btn-crea btn-preferiti" id="vai-preferiti" href="#preferiti" aria-label="Preferiti"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 16.8S2.6 12.4 2.6 7.3A3.9 3.9 0 0 1 10 5.4a3.9 3.9 0 0 1 7.4 1.9c0 5.1-7.4 9.5-7.4 9.5Z"/></svg><span>Preferiti</span></a>
-    <a class="btn-oggi btn-crea" id="vai-crea" href="#crea" aria-label="Crea outfit"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 4.2a1.8 1.8 0 1 1 1.8 1.8L10 7.2M10 7.2 2.6 12.4c-.8.6-.4 1.6.5 1.6h13.8c.9 0 1.3-1 .5-1.6Z"/></svg><span>Crea outfit</span></a>
-    <a class="btn-oggi" id="vai-oggi" href="#oggi" aria-label="Outfit di oggi"><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="3.6"/><path d="M10 1.8v2.4M10 15.8v2.4M1.8 10h2.4M15.8 10h2.4M4.2 4.2l1.7 1.7M14.1 14.1l1.7 1.7M4.2 15.8l1.7-1.7M14.1 5.9l1.7-1.7"/></svg><span>Outfit di oggi</span></a>
     <button class="btn-filtri" id="apri-filtri" aria-expanded="false" aria-controls="filtri">Filtri</button>
   </header>
   <main id="contenuto" tabindex="-1">

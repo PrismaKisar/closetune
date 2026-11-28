@@ -30,10 +30,13 @@ export const FAMIGLIE = [
   ["blu", "Blu e azzurri"], ["rossi", "Rossi"], ["rosa", "Rosa e viola"],
 ];
 
+// solo per i filtri: beige/panna (tinte calde) restano neutri fino a 0.035,
+// rosa antico, navy e azzurri polvere si leggono come colore già da 0.02
 export function famiglia({ L, C, h }) {
-  if (C < SOGLIA_NEUTRO) return L > 0.82 ? "chiari" : L < 0.42 ? "scuri" : "grigi";
+  const soglia = h >= 60 && h <= 130 ? SOGLIA_NEUTRO : 0.02;
+  if (C < soglia) return L > 0.82 ? "chiari" : L < 0.42 ? "scuri" : "grigi";
   if (h >= 40 && h < 100 && C < 0.09) return "terra";
-  if (h >= 345 || h < 40) return "rossi";
+  if (h >= 345 || h < 40) return L > 0.7 ? "rosa" : "rossi";
   if (h < 105) return "gialli";
   if (h < 180) return "verdi";
   if (h < 290) return "blu";
@@ -106,6 +109,16 @@ export function filtra(capi, f = {}) {
       (!f.occasioni?.length || f.occasioni.some((o) => c.occasione.includes(o))) &&
       (!q || [c.marca, c.categoria, c.colore, c.modello, c.materiale, c.id].join(" ").toLowerCase().includes(q)),
   );
+}
+
+const CAMPO_FILTRO = { stato: "stato", tipi: "tipo", famiglie: "famiglia", stagioni: "stagione", occasioni: "occasione" };
+
+/** Conteggi a faccette: per ogni valore del gruppo, quanti capi passano gli ALTRI filtri attivi e hanno quel valore. */
+export function faccette(capi, f, gruppo) {
+  const conti = {};
+  for (const c of filtra(capi, { ...f, [gruppo]: gruppo === "stato" ? "tutti" : [] }))
+    for (const v of [c[CAMPO_FILTRO[gruppo]]].flat()) conti[v] = (conti[v] || 0) + 1;
+  return conti;
 }
 
 /** Quota (0-100) del materiale cercato nella composizione; -1 se il materiale non c'entra. "pelle" senza % vale 100. */
@@ -263,6 +276,10 @@ const senzaStrato = (pezzi) => pezzi.some((p) => p.slot === "base") &&
 const stagioneComune = (pezzi) =>
   ["primavera", "estate", "autunno", "inverno"].some((s) => pezzi.every((p) => stagioni(p).includes(s)));
 
+/** `c` può stare con i capi `fissi`? Stagione in comune, formalità vicina, nessuna regola di gusto violata. */
+export const staBene = (fissi, c) =>
+  fissi.every((f) => sovrapponeStagione(f, c)) && distanzaFormale([...fissi, c]) <= 1 && !gusto([...fissi, c]).vietato;
+
 export const NOMI_SLOT = { base: "t-shirt, polo o camicia", mid: "felpa, pile o maglione", bottom: "pantaloni", shoes: "scarpe", belt: "cintura" };
 
 /** Gli outfit attorno al capo scelto, presi da `pool` (già filtrato per stato): tutte le combinazioni
@@ -286,7 +303,7 @@ export function outfitDa(fissi, pool, { n = Infinity, approvati = [], perSlot = 
   const mancanti = [];
   for (const s of servono) {
     const lista = pool
-      .filter((c) => c.slot === s && fissi.every((f) => sovrapponeStagione(f, c)) && distanzaFormale([...fissi, c]) <= 1 && !gusto([...fissi, c]).vietato)
+      .filter((c) => c.slot === s && staBene(fissi, c))
       .map((c) => ({ c, p: punteggioOutfit([...fissi, c], approvati) }))
       .sort((a, b) => b.p - a.p)
       .slice(0, perSlot)
@@ -323,6 +340,26 @@ export function outfitDa(fissi, pool, { n = Infinity, approvati = [], perSlot = 
   return { outfit: scelti.map((o) => ({ ...o, pelle: PELLE ? pelleOutfit(o.pezzi) : undefined, perche: perche(o.pezzi, scelto, approvati) })), mancanti };
 }
 
+/** Riordina gli outfit: prima gli `n` migliori davvero diversi tra loro (scelta golosa per punteggio,
+ * con una penalità per i pezzi in comune con quelli già scelti: pesano di più i pezzi grandi,
+ * quasi nulla la cintura), poi tutti gli altri dal migliore. */
+const PESO_PEZZO = { mid: 3, base: 2, bottom: 3, shoes: 2, belt: 0.5 };
+export function diversi(outfit, n = 5, forza = 0.35) {
+  const peso = (pz) => pz.reduce((s, p) => s + PESO_PEZZO[p.slot], 0);
+  const simile = (a, b) => peso(a.pezzi.filter((p) => b.pezzi.includes(p))) / Math.max(peso(a.pezzi), peso(b.pezzi));
+  const resto = [...outfit].sort((a, b) => b.punteggio - a.punteggio);
+  const scelti = [];
+  while (scelti.length < n && resto.length) {
+    let i = 0, best = -Infinity;
+    resto.forEach((o, j) => {
+      const s = o.punteggio - forza * Math.max(0, ...scelti.map((x) => simile(o, x)));
+      if (s > best) [best, i] = [s, j];
+    });
+    scelti.push(...resto.splice(i, 1));
+  }
+  return [...scelti, ...resto];
+}
+
 /** Un outfit già fatto (es. un preferito) con voto, pelle e motivi, come quelli proposti. */
 export const valuta = (pezzi, scelto = pezzi[0], approvati = []) =>
   ({ pezzi, punteggio: punteggioOutfit(pezzi, approvati), pelle: PELLE ? pelleOutfit(pezzi) : undefined, perche: perche(pezzi, scelto, approvati) });
@@ -331,13 +368,61 @@ export function giudizio(p) {
   return p >= 0.85 ? "Ottimo" : p >= 0.72 ? "Buono" : p >= 0.55 ? "Discreto" : "Azzardato";
 }
 
+// ---------- titolo dell'outfit: i colori che si vedono, in parole semplici ----------
+// il nome del colore vince sull'hex: un verde quasi nero resta "verde", non "nero"
+const PAROLE = [
+  [/navy|notte/, "navy"], [/petrolio/, "petrolio"], [/azzurr|celeste|university/, "azzurro"], [/blu/, "blu"],
+  [/panna|ecru|crema|avorio/, "panna"], [/bianc/, "bianco"], [/ner[oa]/, "nero"], [/grigi|antracite|melange/, "grigio"],
+  [/verde|oliva|militare/, "verde"], [/beige|tortora|sabbia|kaki/, "beige"], [/wheat|cuoio|cognac|cammello|tabacco/, "cuoio"],
+  [/marron|moro/, "marrone"], [/giall|senape/, "giallo"], [/bordeaux/, "bordeaux"], [/rosa/, "rosa"], [/ross/, "rosso"],
+];
+const DA_FAMIGLIA = { chiari: "bianco", scuri: "nero", grigi: "grigio", terra: "beige", gialli: "giallo", verdi: "verde", blu: "blu", rossi: "rosso", rosa: "rosa" };
+const NEUTRE = new Set(["navy", "panna", "bianco", "nero", "grigio", "beige", "cuoio", "marrone", "denim", "denim chiaro", "denim scuro"]);
+const CALDE = new Set(["beige", "cuoio", "marrone", "giallo", "rosso", "bordeaux"]);
+
+export function parolaColore(p) {
+  const nome = (p.nomeColore || p.colore || "").toLowerCase();
+  if (/jeans|denim/.test(`${p.categoria} ${nome}`) && !/^(ner|bianc|panna)/.test(nome))
+    return p.lch.L > 0.6 ? "denim chiaro" : p.lch.L < 0.4 ? "denim scuro" : "denim";
+  const w = PAROLE.find(([re]) => re.test(nome))?.[1] ?? DA_FAMIGLIA[p.famiglia ?? famiglia(p.lch)];
+  // "bianco/nero": decide la luce misurata
+  if ((w === "bianco" || w === "panna") && p.lch.L < 0.4) return "nero";
+  return w === "nero" && p.lch.L > 0.75 ? "bianco" : w;
+}
+
+/** Titolo breve e descrittivo dai colori veri: "Panna e denim", "Scuro con accento azzurro", "Nero su nero"... */
+export function titoloOutfit(pezzi) {
+  const per = (s) => pezzi.find((p) => p.slot === s);
+  const sopra = per("mid") ?? per("base"), sotto = per("bottom");
+  const visti = pezzi.filter((p) => p.slot !== "belt");
+  const grandi = [sopra, sotto].filter(Boolean);
+  if (!grandi.length) return "Abbinamento";
+  const w = (p) => parolaColore(p);
+  const [a, b = a] = grandi.map(w);
+  const tutti = new Set(visti.map(w));
+  if (tutti.size === 1) return `Tutto ${a}`;
+  const accenti = visti.filter((p) => !NEUTRE.has(w(p)));
+  if (visti.every((p) => p.lch.L > 0.72)) return "Tutto chiaro";
+  if (!accenti.length && visti.every((p) => p.lch.L < 0.4)) return "Tutto scuro";
+  // un solo colore, e su un pezzo piccolo (scarpe o colletto sotto lo strato): è un accento
+  if (accenti.length === 1 && !grandi.includes(accenti[0])) {
+    const c = w(accenti[0]);
+    if (grandi.every((p) => p.lch.L < 0.4)) return `Scuro con accento ${c}`;
+    if (grandi.every((p) => p.lch.L > 0.72)) return `Chiaro con accento ${c}`;
+    return a === b ? `${cap(a)} con accento ${c}` : `${cap(a)} e ${b}, accento ${c}`;
+  }
+  if (visti.length >= 3 && visti.every((p) => CALDE.has(w(p)))) return "Toni caldi";
+  if (a === b) return `${cap(a)} su ${a}`;
+  return `${cap(a)} e ${b}`;
+}
+
 // ---------- motivazioni ----------
 const FRASI = {
   "neutro+colore": (a, b) => {
     const [col, neu] = a.neutro ? [b, a] : [a, b];
     return `Il ${col.nomeColore} è l'unico colore pieno: il ${neu.nomeColore} gli fa da cornice.`;
   },
-  neutri: (a, b) => `Solo neutri: il ${a.nomeColore} e il ${b.nomeColore} si reggono sul contrasto di luce.`,
+  neutri: (a, b) => `${cap(a.nomeColore)} e ${b.nomeColore} fanno entrambi da base neutra: stanno insieme grazie allo stacco tra chiaro e scuro.`,
   monocromatico: (a, b) => `${cap(a.nomeColore)} e ${b.nomeColore} hanno quasi la stessa luce: effetto total look.`,
   "tono su tono": (a, b) => `${cap(a.nomeColore)} e ${b.nomeColore} sono la stessa tinta a intensità diverse: tono su tono.`,
   analoghi: (a, b) => `${cap(a.nomeColore)} e ${b.nomeColore} sono vicini sulla ruota: passaggio morbido, senza stacchi.`,

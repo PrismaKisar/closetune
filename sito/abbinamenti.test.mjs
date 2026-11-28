@@ -77,6 +77,24 @@ test("filtra per tipo, famiglia, stagione, stato e testo", () => {
   assert.deepEqual(ids({ testo: "merino" }), ["3"]);
 });
 
+test("faccette: conteggi che tengono conto degli altri filtri, non del proprio gruppo", () => {
+  const capi = m.prepara([
+    capo("1", "felpa", "#2d4a6e", { stagione: ["inverno"] }),
+    capo("2", "felpa", "#1e1e20", { stagione: ["inverno", "autunno"] }),
+    capo("3", "camicia", "#2d4a6e", { stagione: ["estate"] }),
+    capo("4", "jeans", "#2c3e5c", { stato: "dismesso" }),
+  ]);
+  const f = { stato: "attivo", tipi: ["felpe"], famiglie: [], stagioni: [], occasioni: [] };
+  assert.deepEqual(m.faccette(capi, f, "tipi"), { felpe: 2, camicie: 1 });
+  assert.deepEqual(m.faccette(capi, f, "famiglie"), { blu: 1, scuri: 1 });
+  assert.deepEqual(m.faccette(capi, f, "stagioni"), { inverno: 2, autunno: 1 });
+  // il proprio gruppo non restringe: con un colore scelto gli altri colori contano ancora
+  assert.deepEqual(m.faccette(capi, { ...f, famiglie: ["blu"] }, "famiglie"), { blu: 1, scuri: 1 });
+  assert.deepEqual(m.faccette(capi, { ...f, famiglie: ["blu"] }, "tipi"), { felpe: 1, camicie: 1 });
+  assert.deepEqual(m.faccette(capi, { stato: "attivo", tipi: ["pantaloni"] }, "stato"), { dismesso: 1 });
+  assert.deepEqual(m.faccette(capi, { ...f, testo: "camicia" }, "tipi"), { camicie: 1 });
+});
+
 test("relazioni cromatiche", () => {
   const [nero, senape, navy, petrolio, bianco, jeans] = m.prepara([
     capo("a", "t-shirt", "#191d1f"), capo("b", "maglione", "#d8aa44"), capo("c", "pantalone", "#1f2a44"),
@@ -438,4 +456,63 @@ test("alternative: cambia un pezzo, gli altri restano fermi, mai combinazioni vi
   assert.deepEqual(alt2.map((o) => o.pezzi.find((x) => x.slot === "base").id).sort(), ["c", "p"]);
   assert.ok(alt2.every((o) => o.pezzi.includes(j) && o.pezzi.includes(s)));
   assert.ok(alt2[0].punteggio >= alt2[1].punteggio);
+});
+
+test("famiglie dei filtri: rosa antico è rosa, navy desaturato è blu, panna resta chiaro", () => {
+  const f = (hex) => m.famiglia(m.oklch(hex));
+  assert.equal(f("#cdb3b1"), "rosa");
+  assert.equal(f("#333b48"), "blu");
+  assert.equal(f("#bbc8da"), "blu");
+  assert.equal(f("#e3e3d1"), "chiari");
+  assert.equal(f("#a7a791"), "grigi");
+  assert.equal(f("#a83a32"), "rossi");
+});
+
+test("diversi: i primi n non si ripetono nei pezzi grandi, poi il resto dal migliore", () => {
+  const tutte = ["primavera", "estate", "autunno", "inverno"];
+  const k = (id, categoria, hex) => ({ id, categoria, hex, colore: "x", stato: "attivo", stagione: tutte, occasione: ["casual"] });
+  const [t, j1, j2, s1, s2, b1, b2, b3] = m.prepara([
+    k("t", "t-shirt", "#f1f1ed"), k("j1", "jeans", "#748991"), k("j2", "chino", "#cbb994"),
+    k("s1", "sneaker", "#d2d4ce"), k("s2", "stivali", "#4a3424"), k("b1", "cintura", "#4a3424"), k("b2", "cintura", "#191d1f"), k("b3", "cintura", "#8a8d90"),
+  ]);
+  const o = (pezzi, punteggio) => ({ pezzi, punteggio });
+  // i tre migliori cambiano solo la cintura
+  const lista = [o([t, j1, s1, b1], 0.9), o([t, j1, s1, b2], 0.89), o([t, j1, s1, b3], 0.88), o([t, j2, s2, b1], 0.8), o([t, j1, s2, b1], 0.7)];
+  const r = m.diversi(lista, 2);
+  assert.equal(r.length, lista.length, "nessun outfit perso");
+  assert.equal(new Set(r).size, lista.length);
+  assert.equal(r[0], lista[0], "il migliore resta primo");
+  assert.equal(r[1], lista[3], "il secondo cambia pantaloni e scarpe, non solo la cintura");
+  assert.deepEqual(r.slice(2), [lista[1], lista[2], lista[4]], "poi gli altri dal migliore");
+  assert.deepEqual(m.diversi([], 5), []);
+  assert.deepEqual(m.diversi(lista, 0).map((x) => x.punteggio), [0.9, 0.89, 0.88, 0.8, 0.7]);
+});
+
+test("titoloOutfit: titoli descrittivi dai colori veri", () => {
+  const k = (id, categoria, hex, colore) => ({ id, categoria, hex, colore, stato: "attivo", stagione: [], occasione: ["casual"] });
+  const c = Object.fromEntries(m.prepara([
+    k("felpaPanna", "felpa con cappuccio", "#e6e6dc", "bianco panna"), k("tNera", "t-shirt", "#191d1f", "nero"),
+    k("jScuri", "jeans", "#33424d", "blu denim scuro"), k("jNeri", "jeans", "#1e211e", "nero"), k("jChiari", "jeans", "#7f979f", "blu denim chiaro"),
+    k("pBianco", "pantalone", "#e6e7db", "bianco"), k("sNere", "sneaker", "#181517", "bianco/nero"), k("sAzzurre", "sneaker", "#5271a2", "azzurro"),
+    k("sBianche", "sneaker", "#d2d4ce", "bianco totale"), k("stivali", "stivale", "#b0642c", "wheat (giallo grano)"),
+    k("verde", "felpa con cappuccio", "#323d3a", "verde scuro"), k("navy", "felpa girocollo", "#202428", "blu navy"),
+    k("cuoio", "cintura", "#826846", "cuoio"), k("maglNera", "maglione", "#1c1e1d", "nero"), k("camAzz", "camicia", "#bbc8da", "azzurro chiaro"),
+  ]).map((x) => [x.id, x]));
+  const t = (...ids) => m.titoloOutfit(ids.map((i) => c[i]));
+  assert.equal(t("felpaPanna", "tNera", "jScuri", "stivali", "cuoio"), "Panna e denim scuro");
+  assert.equal(t("maglNera", "tNera", "jNeri", "sAzzurre"), "Scuro con accento azzurro");
+  assert.equal(t("maglNera", "tNera", "jNeri", "sNere"), "Tutto nero");
+  assert.equal(t("maglNera", "jNeri", "sBianche"), "Nero su nero");
+  assert.equal(t("felpaPanna", "pBianco", "sBianche"), "Tutto chiaro");
+  assert.equal(t("verde", "tNera", "jChiari", "sAzzurre", "cuoio"), "Verde e denim chiaro", "il verde scuro non è 'solo neutri'");
+  assert.equal(t("navy", "camAzz", "jNeri", "stivali"), "Scuro con accento azzurro");
+  assert.equal(t("navy", "camAzz", "pBianco", "sBianche"), "Navy e bianco, accento azzurro");
+  assert.equal(t("navy", "jScuri", "stivali", "cuoio"), "Navy e denim scuro");
+  assert.equal(m.titoloOutfit([]), "Abbinamento");
+  assert.equal(m.parolaColore(c.stivali), "cuoio");
+});
+
+test("titoloOutfit: jeans 'blu quasi nero' resta denim", () => {
+  const [j] = m.prepara([{ id: "j", categoria: "jeans", hex: "#1d2426", colore: "blu quasi nero", stato: "attivo" }]);
+  assert.equal(m.parolaColore(j), "denim scuro");
 });
