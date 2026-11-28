@@ -684,3 +684,9 @@ test("prossimi per strato: solo capi di quello strato, più colori, al massimo 3
   const tutto = m.prossimi(armadio, { quanti: 20 });
   assert.equal(new Set(tutto.map((x) => x.capo.categoria + x.capo.colore)).size, tutto.length, "niente doppioni nemmeno in Tutto");
 });
+
+test("inPausa: solo i capi la cui pausa non è finita", () => {
+  const ora = 1_000_000;
+  assert.deepEqual([...m.inPausa({ a: ora + 1, b: ora, c: ora - 5 }, ora)], ["a"]);
+  assert.equal(m.inPausa({}, ora).size, 0);
+});

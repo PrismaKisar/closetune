@@ -53,7 +53,7 @@ h1, h2, h3 { margin: 0; font-weight: 400; }
 .marchio svg { transform-origin: 50% 15%; }
 
 /* schermata d'avvio, finché arrivano i capi */
-.avvio { min-height: calc(100vh - var(--top-h)); display: grid; place-content: center; justify-items: center; gap: 18px; animation: entra .6s var(--ease) both; }
+.avvio { min-height: calc(100vh - var(--top-h)); display: grid; place-content: center; justify-items: center; gap: 18px; animation: entra .6s var(--ease) backwards; }
 .avvio .lockup { font-size: clamp(56px, 9vw, 112px); }
 .avvio p { margin: 0; font: italic clamp(20px, 2.2vw, 28px)/1.2 var(--serif); color: var(--muted); }
 .cerca { position: relative; flex: 0 1 420px; margin-left: auto; }
@@ -83,7 +83,7 @@ h1, h2, h3 { margin: 0; font-weight: 400; }
 .tab-preferiti[aria-current] svg { fill: currentColor; }
 
 /* ---------- outfit di oggi ---------- */
-.oggi { max-width: 1120px; margin: 0 auto; padding: 24px var(--gutter) 96px; animation: entra .5s var(--ease) both; }
+.oggi { max-width: 1120px; margin: 0 auto; padding: 24px var(--gutter) 96px; animation: entra .5s var(--ease) backwards; }
 .oggi-testa { display: flex; align-items: end; justify-content: space-between; flex-wrap: wrap; gap: 16px; margin: 8px 0 28px; }
 .oggi-testa .marca { margin: 0; }
 .oggi-testa h1 { font: clamp(36px, 3.6vw, 52px)/1 var(--serif); letter-spacing: -.015em; margin-top: 8px; }
@@ -194,7 +194,7 @@ h1, h2, h3 { margin: 0; font-weight: 400; }
   max-width: 1520px; margin: 0 auto; padding: 24px var(--gutter) 96px;
 }
 .scheda {
-  position: sticky; top: calc(var(--top-h) + 24px); align-self: start; animation: entra .5s var(--ease) both;
+  position: sticky; top: calc(var(--top-h) + 24px); align-self: start; animation: entra .5s var(--ease) backwards;
   /* più alta dello schermo: scorre da sola, così note e pulsanti restano raggiungibili */
   max-height: calc(100vh - var(--top-h) - 48px); overflow-y: auto; scrollbar-width: thin; padding: 0 6px 8px 0;
 }
@@ -236,7 +236,7 @@ h1, h2, h3 { margin: 0; font-weight: 400; }
 /* compatta: titolo, un voto, le foto, una frase; il resto dentro "Perché funziona" */
 .outfit {
   background: var(--surface); border: 1px solid var(--line); border-radius: 18px; padding: 16px 20px 6px;
-  animation: entra .55s var(--ease) both; animation-delay: calc(var(--i) * 80ms + 80ms);
+  animation: entra .55s var(--ease) backwards; animation-delay: calc(var(--i) * 80ms + 80ms);
 }
 .outfit + .outfit { margin-top: 16px; }
 @keyframes entra { from { opacity: 0; transform: translateY(10px); } }
@@ -793,3 +793,28 @@ h2.n-abb { font: 400 14px/1.4 var(--sans); }
 .fermo .oggi, .fermo .avvio, .fermo .outfit { animation: none; }
 .vuoto { display: grid; justify-items: start; gap: 14px; padding: 28px; border-radius: 14px; background: var(--tinta); }
 .vuoto p { margin: 0; font-size: 15px; }
+
+/* ordine guidato: un capo alla volta */
+.guida { display: grid; grid-template-columns: 220px 1fr; gap: 24px; align-items: center; margin: 0 0 28px; padding: 20px; border-radius: 18px; background: var(--surface); border: 1px solid var(--line); }
+.guida .cornice { aspect-ratio: 3 / 4; }
+.guida h2 { margin: 4px 0 8px; font-size: 26px; }
+.guida p { margin: 0 0 12px; }
+
+/* in lavatrice */
+.in-pausa { font-style: normal; font-size: 12px; color: var(--muted); }
+.pausa { font-size: 14px; }
+.meteo-chip { display: inline-flex; align-items: center; gap: 8px; margin: 0 0 16px; padding: 8px 14px; border: 1px solid var(--line); border-radius: 999px; background: none; color: var(--ink); font: 500 13.5px/1.2 var(--sans); cursor: pointer; }
+.meteo-chip svg { width: 16px; height: 16px; }
+
+@media (max-width: 600px) {
+  .guida { grid-template-columns: 1fr; gap: 12px; padding: 14px; }
+  .guida .cornice { width: 132px; }
+  .guida h2 { font-size: 21px; }
+  /* "Crea un look" diventa un'icona: due colonne di pillole sono rumore */
+  .carta-componi { padding: 0 10px; }
+  .carta-componi span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  /* in Oggi: il bottone principale resta sotto il pollice, sopra la barra */
+  .oggi-look .azioni-look .primario { position: fixed; left: 16px; right: 16px; bottom: calc(80px + env(safe-area-inset-bottom)); z-index: 5; box-shadow: 0 6px 18px rgb(40 30 20 / .22); }
+  .oggi:has(.oggi-look) { padding-bottom: 150px; }
+  .oggi-azioni #precedente:disabled { display: none; }
+}

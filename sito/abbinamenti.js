@@ -731,3 +731,7 @@ export function prossimi(capi, { quanti = 4, campioni = 160, approvati = [], str
       compagni: Object.fromEntries(Object.entries(x.compagni).map(([s, l]) => [s, l.length])) };
   });
 }
+
+// ---------- capi in pausa (in lavatrice): fuori da Oggi e Componi fino a una data ----------
+/** pause = { id: fino (ms) }: gli id ancora in pausa adesso. */
+export const inPausa = (pause, ora = Date.now()) => new Set(Object.entries(pause).filter(([, fino]) => fino > ora).map(([id]) => id));

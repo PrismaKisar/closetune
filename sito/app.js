@@ -1,4 +1,4 @@
-import { prossimi, USCITE, perOccasione, vaPer, mancaPer, tre, staBene, FAMIGLIE, NOMI_SLOT, TIPI, titoloOutfit, delGiorno, effetto, cielo, faccette, filtra, giudizio, giudizioPelle, impostaPelle, ordineArcobaleno, outfit, outfitDa, percentuale, prepara, taraSuApprovati, valuta, alternative } from "./abbinamenti.js";
+import { inPausa, prossimi, USCITE, perOccasione, vaPer, mancaPer, tre, staBene, FAMIGLIE, NOMI_SLOT, TIPI, titoloOutfit, delGiorno, effetto, cielo, faccette, filtra, giudizio, giudizioPelle, impostaPelle, ordineArcobaleno, outfit, outfitDa, percentuale, prepara, taraSuApprovati, valuta, alternative } from "./abbinamenti.js";
 
 const STAGIONI = ["primavera", "estate", "autunno", "inverno"];
 const OCCASIONI = ["casual", "smart-casual", "elegante", "sportivo", "outdoor"];
@@ -62,7 +62,7 @@ function carta(c, pos, appeso = false) {
   return `<li class="carta${appeso ? " appeso" : ""}">${segno}${c.stato === "attivo" ? `<a class="carta-componi" href="#crea/${esc(c.id)}" aria-label="Crea un look con ${esc(nomeCapo(c))}">${GRUCCIA}<span>Crea un look</span></a>` : ""}<a class="capo${c.stato !== "attivo" ? " spento" : ""}" href="#capo/${esc(c.id)}">
     <div class="cornice">${visuale(c)}</div>
     <div class="capo-testo">
-      <span class="nome">${esc(cap(c.categoria))}</span>
+      <span class="nome">${esc(cap(c.categoria))}${inPausa(pause()).has(c.id) ? ` <em class="in-pausa">in lavatrice</em>` : ""}</span>
       <span class="colore"><i style="--c:${esc(c.hex)}"></i>${esc(c.nomeColore)}${c.stato !== "attivo" ? ` <em>${ETICHETTA_STATO[c.stato] ?? esc(c.stato)}</em>` : ""}</span>
       ${marca(c) ? `<span class="marca-capo">${esc(marca(c))}</span>` : ""}
     </div>
@@ -294,6 +294,9 @@ function vistaDettaglio(c) {
       <p class="marca">${esc(marca(c) || "Senza marca")} · <span>${esc(c.id)}</span></p>
       <h1 id="titolo-capo">${esc(cap(c.categoria))}</h1>
       ${c.stato === "attivo" ? `<a class="btn primario componi-capo" href="#crea/${esc(c.id)}">${GRUCCIA}Abbina questo capo</a>` : ""}
+      ${c.stato === "attivo" ? (inPausa(pause()).has(c.id)
+        ? `<p class="pausa">In lavatrice fino a ${new Date(pause()[c.id]).toLocaleDateString("it-IT", { weekday: "long" })}: non lo propongo in Oggi e Componi. <button type="button" class="link" data-pausa="${esc(c.id)}">È di nuovo pronto</button></p>`
+        : `<button type="button" class="btn secondario" data-pausa="${esc(c.id)}">In lavatrice</button>`) : ""}
       <details class="dettagli-capo"${matchMedia("(max-width: 600px)").matches ? "" : " open"}><summary>Dettagli del capo</summary>
       <dl class="info">${righe.map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`).join("")}</dl>
       ${c.note ? `<p class="note">${esc(c.note)}</p>` : ""}
@@ -369,9 +372,15 @@ function rigaMeteo(citta, meteo) {
   const errore = st.meteo?.citta === citta && st.meteo.errore;
   if (meteo && !st.modificaCitta) return `<div class="meteo">${meteo.cielo ? `<svg viewBox="0 0 20 20" aria-hidden="true">${CIELO[meteo.cielo]}</svg>` : PIN}<p><b>${esc(meteo.nome)}</b>${meteo.cielo ? ` · ${meteo.cielo}` : ""} · ${Math.round(meteo.min)}–${Math.round(meteo.max)}°C${meteo.pioggia >= 30 ? ` · pioggia ${meteo.pioggia}%` : ""}<span>${esc(motivoMeteo(meteo).testo)}</span></p><button type="button" class="link" data-modifica-citta>Cambia città</button></div>`;
   if (citta && !errore && !st.modificaCitta) return `<div class="meteo" role="status">${PIN}<p>Leggo il meteo di ${esc(citta)}…</p></div>`;
+  if (!citta && !st.modificaCitta) return `<button type="button" class="meteo-chip" data-modifica-citta>${PIN}Aggiungi la tua città per il meteo</button>`;
   return `<form class="meteo citta" id="form-citta">${PIN}<label for="citta">${errore ? esc(errore) : "Con la tua città scelgo gli strati in base alla temperatura di oggi."}</label>
     <span class="citta-campo"><input id="citta" name="citta" placeholder="La tua città" value="${esc(citta)}" autocomplete="address-level2" enterkeyhint="done"><button class="btn">Imposta città</button></span></form>`;
 }
+
+// "In lavatrice": il capo esce da Oggi e Componi per qualche giorno (solo su questo dispositivo)
+const PAUSA = "closetune-pausa", GIORNI_PAUSA = 3;
+const pause = () => JSON.parse(localStorage.getItem(PAUSA) || "{}");
+const pronti = () => { const via = inPausa(pause()); return filtra(st.capi, { stato: "attivo" }).filter((c) => !via.has(c.id)); };
 
 // "Lo metto oggi": resta per tutta la giornata (solo su questo dispositivo)
 const INDOSSATO = "closetune-indossato";
@@ -386,7 +395,7 @@ function vistaOggi() {
   const oggi = new Date();
   const citta = localStorage.getItem(CITTA) ?? "";
   const meteo = st.meteo?.citta === citta && !st.meteo.errore ? st.meteo : null;
-  const attivi = filtra(st.capi, { stato: "attivo" });
+  const attivi = pronti();
   const manca = avvisoUscita(attivi);
   // all'apertura, se oggi hai già scelto un outfit, si riparte da quello
   if (st.oggiPezzi === undefined) st.oggiPezzi = indossatoOggi();
@@ -458,14 +467,35 @@ document.addEventListener("submit", (e) => {
 const APPESI = "closetune-appesi";
 const appesi = () => JSON.parse(localStorage.getItem(APPESI) || "[]");
 
+// uno alla volta: il prossimo capo da appendere, grande, con un solo bottone
+function guida(capi, fatti) {
+  const i = capi.findIndex((c) => !fatti.includes(c.id));
+  if (i < 0) return `<p class="avviso">Tutti appesi. L'armadio è in ordine.</p>`;
+  const c = capi[i], prima = capi[i - 1], dopo = capi[i + 1];
+  return `<section class="guida" aria-label="Il prossimo da appendere">
+    <div class="cornice">${visuale(c)}</div>
+    <div class="guida-testo">
+      <p class="marca">${i + 1}° da sinistra · ne mancano ${capi.length - fatti.length}</p>
+      <h2>${esc(nomeCapo(c))}</h2>
+      ${prima ? `<p>Dopo: ${esc(nomeCapo(prima))}.</p>` : `<p>È il primo a sinistra.</p>`}
+      <div class="azioni-look">
+        <button type="button" class="btn primario" data-appeso="${esc(c.id)}">Appeso, prossimo</button>
+        ${prima ? `<button type="button" class="btn secondario" data-appeso="${esc(prima.id)}">Torna al precedente</button>` : ""}
+      </div>
+      ${dopo ? `<p class="stima">Poi: ${esc(nomeCapo(dopo))}</p>` : ""}
+    </div>
+  </section>`;
+}
+
 function vistaArcobaleno() {
   const capi = ordineArcobaleno(st.capi);
   const fatti = appesi().filter((id) => capi.some((c) => c.id === id));
   main.innerHTML = `<div class="oggi arcobaleno">
     <a class="indietro" href="#armadio">Tutti i capi</a>
     <div class="oggi-testa"><div><p class="marca">${capi.length} capi sopra · da appendere in quest'ordine</p><h1>Ordine nell'armadio</h1>
-      <p class="sottotitolo">Appendi da sinistra a destra e tocca il numero di ogni capo appeso: ti tengo il segno.</p></div>
+      <p class="sottotitolo">Appendi da sinistra a destra: ti mostro un capo alla volta e ti tengo il segno. Sotto c'è la sequenza intera.</p></div>
       <div class="oggi-azioni"><p class="conta-appesi" role="status">${fatti.length} di ${capi.length} appesi</p>${fatti.length ? `<button type="button" class="btn" id="ricomincia-appesi">Ricomincia</button>` : ""}</div></div>
+    ${guida(capi, fatti)}
     <ol class="sequenza" aria-label="La sequenza, da sinistra a destra">${capi.map((c, i) => `<li style="--c:${esc(c.hex)}" title="${i + 1}. ${esc(nomeCapo(c))}"${fatti.includes(c.id) ? ' class="fatto"' : ""}><span>${i + 1}</span></li>`).join("")}</ol>
     <ol class="griglia">${capi.map((c, i) => carta(c, i + 1, fatti.includes(c.id))).join("")}</ol>
   </div>`;
@@ -561,8 +591,8 @@ function apriPicker(s) {
   const attuale = fissi.find((f) => f.slot === s);
   const altri = fissi.filter((f) => f !== attuale);
   // ponytail: controllo a coppie (stagione, formalità, gusto), non l'outfit intero; basta a mettere in fondo i capi che non vanno
-  const ok = new Set(filtra(st.capi, { stato: "attivo" }).filter((c) => c.slot === s && staBene(altri, c)));
-  const capi = filtra(st.capi, { stato: "attivo" }).filter((c) => c.slot === s).sort((a, b) => ok.has(b) - ok.has(a) || b.lch.L - a.lch.L);
+  const ok = new Set(pronti().filter((c) => c.slot === s && staBene(altri, c)));
+  const capi = pronti().filter((c) => c.slot === s).sort((a, b) => ok.has(b) - ok.has(a) || b.lch.L - a.lch.L);
   const primoNo = capi.find((c) => !ok.has(c));
   const famiglie = FAMIGLIE.filter(([v]) => capi.some((c) => c.famiglia === v));
   const d = $("#picker");
@@ -586,7 +616,7 @@ function risultatiCrea() {
   const fissi = fissiDaHash();
   const box = $("#risultati-crea");
   if (!fissi.length) { box.innerHTML = `<p class="avviso">Tocca una casella e scegli almeno un capo: il resto lo completo io, dal migliore.</p>`; return; }
-  const attivi = filtra(st.capi, { stato: "attivo" });
+  const attivi = pronti();
   const manca = avvisoUscita(attivi);
   if (manca) { box.innerHTML = manca; return; }
   const r = outfitDa(fissi, perOccasione(attivi, st.uscita, fissi), { approvati: st.approvati });
@@ -722,7 +752,16 @@ document.addEventListener("click", (e) => {
     const y = window.scrollY;
     vistaArcobaleno();
     window.scrollTo(0, y);
-    $(id ? `[data-appeso="${id}"]` : ".indietro").focus({ preventScroll: true });
+    $(id ? `.guida .primario, [data-appeso="${id}"]` : ".indietro")?.focus({ preventScroll: true });
+  }
+  else if (t.dataset.pausa) {
+    const p = pause(), id = t.dataset.pausa;
+    if (inPausa(p).has(id)) delete p[id]; else p[id] = Date.now() + GIORNI_PAUSA * 864e5;
+    localStorage.setItem(PAUSA, JSON.stringify(p));
+    st.oggiPezzi = null;
+    main.classList.add("fermo");
+    render();
+    $("[data-pausa]")?.focus({ preventScroll: true });
   }
   else if (t.id === "svuota") { history.replaceState(null, "", "#crea"); main.classList.add("fermo"); vistaCrea(); }
   else if (t.dataset.uscita) {
