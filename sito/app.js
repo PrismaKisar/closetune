@@ -1,4 +1,4 @@
-import { recenti, inPausa, prossimi, USCITE, perOccasione, vaPer, mancaPer, tre, staBene, FAMIGLIE, NOMI_SLOT, TIPI, titoloOutfit, delGiorno, effetto, cielo, faccette, filtra, giudizio, giudizioPelle, impostaPelle, ordineArcobaleno, outfit, outfitDa, percentuale, prepara, taraSuApprovati, valuta, alternative } from "./abbinamenti.js";
+import { motivo, recenti, prossimi, USCITE, perOccasione, vaPer, mancaPer, tre, staBene, FAMIGLIE, NOMI_SLOT, TIPI, titoloOutfit, delGiorno, effetto, cielo, faccette, filtra, giudizio, giudizioPelle, impostaPelle, ordineArcobaleno, outfit, outfitDa, percentuale, prepara, taraSuApprovati, valuta, alternative } from "./abbinamenti.js";
 
 const STAGIONI = ["primavera", "estate", "autunno", "inverno"];
 const OCCASIONI = ["casual", "smart-casual", "elegante", "sportivo", "outdoor"];
@@ -13,6 +13,7 @@ const st = {
   f: { stato: "attivo", tipi: [], famiglie: [], stagioni: [], occasioni: [], testo: "" },
   pool: "attivo",
   giro: 0, // "Un altro outfit" / "Precedente" in Oggi
+  verso: 1,
   uscita: localStorage.getItem("closetune-uscita") ?? "casual", // "Oggi vado a…"
 };
 
@@ -59,12 +60,12 @@ const sagoma = (s) => `<svg class="sagoma" viewBox="0 0 64 64" aria-hidden="true
 // pos: numero nella sequenza dell'armadio, da spuntare quando il capo è appeso
 function carta(c, pos, appeso = false) {
   const segno = pos ? `<button type="button" class="pos" data-appeso="${esc(c.id)}" aria-pressed="${appeso}" aria-label="${pos}. ${esc(nomeCapo(c))}: ${appeso ? "appeso" : "segna come appeso"}">${appeso ? SPUNTA : pos}</button>` : "";
-  return `<li class="carta${appeso ? " appeso" : ""}">${segno}${c.stato === "attivo" ? `<a class="carta-componi" href="#crea/${esc(c.id)}" aria-label="Crea un look con ${esc(nomeCapo(c))}">${GRUCCIA}<span>Crea un look</span></a>` : ""}<a class="capo${c.stato !== "attivo" ? " spento" : ""}" href="#capo/${esc(c.id)}">
+  return `<li class="carta${appeso ? " appeso" : ""}">${segno}${c.stato === "attivo" ? `<a class="carta-componi" href="#crea/${esc(c.id)}" aria-label="Crea un look con ${esc(nomeCapo(c))}" title="Crea un look">${GRUCCIA}<span>Crea un look</span></a>` : ""}<a class="capo${c.stato !== "attivo" ? " spento" : ""}" href="#capo/${esc(c.id)}">
     <div class="cornice">${visuale(c)}</div>
     <div class="capo-testo">
-      <span class="nome">${esc(cap(c.categoria))}${inPausa(pause()).has(c.id) ? ` <em class="in-pausa">in lavatrice</em>` : ""}</span>
+      <span class="nome">${esc(cap(c.categoria))}</span>
       <span class="colore"><i style="--c:${esc(c.hex)}"></i>${esc(c.nomeColore)}${c.stato !== "attivo" ? ` <em>${ETICHETTA_STATO[c.stato] ?? esc(c.stato)}</em>` : ""}</span>
-      ${marca(c) ? `<span class="marca-capo">${esc(marca(c))}</span>` : ""}
+      ${marca(c) || c.dettaglio ? `<span class="marca-capo">${esc([marca(c), c.dettaglio].filter(Boolean).join(" · "))}</span>` : ""}
     </div>
   </a></li>`;
 }
@@ -244,7 +245,7 @@ function schedaOutfit(o, { i = 0, scelto = o.pezzi[0], fissi = [scelto], oggi = 
   return `<article class="outfit" style="--i:${i}">
     <header class="outfit-testa">
       <${h}>${esc(titoloOutfit(pezzi))}</${h}>
-      ${o.carattere ? `<span class="carattere" data-c="${o.carattere}">${CARATTERE[o.carattere]}</span>` : o.carattere === null ? "" : `<span class="armonia" data-v="${g}" title="${SPIEGA_ARMONIA}">Armonia <b>${ARMONIA[g]}</b></span>`}
+      ${o.carattere ? `<span class="carattere" data-c="${o.carattere}">${o.etichetta ?? CARATTERE[o.carattere]}</span>` : o.carattere === null ? "" : `<span class="armonia" data-v="${g}" title="${SPIEGA_ARMONIA}">Armonia <b>${ARMONIA[g]}</b></span>`}
       ${bottoneCuore(o.pezzi)}
     </header>
     ${foto}
@@ -294,9 +295,6 @@ function vistaDettaglio(c) {
       <p class="marca">${esc(marca(c) || "Senza marca")} · <span>${esc(c.id)}</span></p>
       <h1 id="titolo-capo">${esc(cap(c.categoria))}</h1>
       ${c.stato === "attivo" ? `<a class="btn primario componi-capo" href="#crea/${esc(c.id)}">${GRUCCIA}Abbina questo capo</a>` : ""}
-      ${c.stato === "attivo" ? (inPausa(pause()).has(c.id)
-        ? `<p class="pausa">In lavatrice fino a ${new Date(pause()[c.id]).toLocaleDateString("it-IT", { weekday: "long" })}: non lo propongo in Oggi e Componi. <button type="button" class="link" data-pausa="${esc(c.id)}">È di nuovo pronto</button></p>`
-        : `<button type="button" class="btn secondario" data-pausa="${esc(c.id)}">In lavatrice</button>`) : ""}
       <details class="dettagli-capo"${matchMedia("(max-width: 600px)").matches ? "" : " open"}><summary>Dettagli del capo</summary>
       <dl class="info">${righe.map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`).join("")}</dl>
       ${c.note ? `<p class="note">${esc(c.note)}</p>` : ""}
@@ -377,10 +375,7 @@ function rigaMeteo(citta, meteo) {
     <span class="citta-campo"><input id="citta" name="citta" placeholder="La tua città" value="${esc(citta)}" autocomplete="address-level2" enterkeyhint="done"><button class="btn">Imposta città</button></span></form>`;
 }
 
-// "In lavatrice": il capo esce da Oggi e Componi per qualche giorno (solo su questo dispositivo)
-const PAUSA = "closetune-pausa", GIORNI_PAUSA = 3;
-const pause = () => JSON.parse(localStorage.getItem(PAUSA) || "{}");
-const pronti = () => { const via = inPausa(pause()); return filtra(st.capi, { stato: "attivo" }).filter((c) => !via.has(c.id)); };
+const pronti = () => filtra(st.capi, { stato: "attivo" });
 
 // "Lo metto oggi": resta per tutta la giornata (solo su questo dispositivo)
 const INDOSSATO = "closetune-indossato";
@@ -409,7 +404,14 @@ function vistaOggi() {
   const manca = avvisoUscita(attivi);
   // all'apertura, se oggi hai già scelto un outfit, si riparte da quello
   if (st.oggiPezzi === undefined) st.oggiPezzi = indossatoOggi();
-  let { stagione, scelto, outfit: o, adatti } = manca ? { stagione: delGiorno(attivi, oggi).stagione } : delGiorno(perOccasione(attivi, st.uscita), oggi, st.giro, st.approvati, meteo, st.uscita, recenti(storico(), oggi));
+  const giorno = () => delGiorno(perOccasione(attivi, st.uscita), oggi, st.giro, st.approvati, meteo, st.uscita, recenti(storico(), oggi));
+  let { stagione, scelto, outfit: o, adatti } = manca ? { stagione: delGiorno(attivi, oggi).stagione } : giorno();
+  // "Un altro outfit" non ripropone quello appena visto
+  for (let k = 0; o && st.evita && stessiCapi(o.pezzi.map((p) => p.id), st.evita) && k < 5; k++) {
+    st.giro += st.verso;
+    ({ stagione, scelto, outfit: o, adatti } = giorno());
+  }
+  st.evita = null;
   // pezzi cambiati a mano: gli altri restano fermi
   const cambiati = st.oggiPezzi?.map((id) => st.capi.find((c) => c.id === id)).filter(Boolean);
   if (o && cambiati?.length) {
@@ -432,6 +434,7 @@ function vistaOggi() {
     </div>
     ${rigaMeteo(citta, meteo)}
     ${sceltaUscita()}
+    ${o && indossatoOggi() && !stessiCapi(ids, indossatoOggi()) ? `<p class="scelto-oggi">${SPUNTA}Oggi hai già scelto un look. <button type="button" class="link" data-torna-oggi>Torna al tuo look</button></p>` : ""}
     ${manca ?? (o ? schedaOutfit(o, { scelto, fissi: [], oggi: { clima, indossato: stessiCapi(ids, indossatoOggi() ?? []) }, livello: 2 }) : `<p class="avviso">Nessun capo attivo adatto all'${esc(stagione)}.</p>`)}
     <p class="sr" role="status" id="annuncio">${esc(st.annuncio ?? "")}</p>
     <dialog class="picker laterale" id="picker" aria-labelledby="picker-titolo"></dialog>
@@ -515,7 +518,6 @@ function vistaArcobaleno() {
 const COMPAGNI = { base: "t-shirt e camicie", mid: "felpe e maglioni", bottom: "pantaloni", shoes: "paia di scarpe" };
 const miniLook = (o) => `<ul class="mini-look">${[...o.pezzi].sort((a, b) => ORDINE[a.slot] - ORDINE[b.slot]).map((p) => `<li${p.nuovo ? ' class="nuovo"' : ""}>${p.nuovo ? `<span class="cornice">${visuale(p)}</span>` : `<a class="cornice" href="#capo/${esc(p.id)}" title="${esc(nomeCapo(p))}">${visuale(p)}</a>`}</li>`).join("")}</ul>`;
 // un livello, non un numero: la stima è grezza, conta l'ordine
-const versatilita = (r) => (r >= 0.66 ? "Altissima" : r >= 0.33 ? "Alta" : "Buona");
 const STRATI_PROSSIMO = [["", "Tutto"], ["base", "Maglie e camicie"], ["mid", "Felpe e maglioni"], ["bottom", "Pantaloni"], ["shoes", "Scarpe"]];
 function vistaProssimo() {
   const attivi = filtra(st.capi, { stato: "attivo" });
@@ -531,17 +533,17 @@ function vistaProssimo() {
       <div class="proposta-testo">
         <p class="marca">${i === 0 ? "Il più utile" : `${i + 1}° posto`}</p>
         <h2>${esc(x.nome)}</h2>
-        <p class="sblocca"><b>${versatilita(x.valore / lista[0].valore)}</b> versatilità</p>
+        <p class="sblocca"><b>${motivo(x)}</b></p>
         <ul class="motivi">
           <li>Sta con ${Object.entries(x.compagni).filter(([s]) => s !== "mid" || x.compagni.mid).map(([s, k]) => `${k} ${COMPAGNI[s]}`).join(", ").replace(/, ([^,]*)$/, " e $1")} che hai.</li>
-          ${x.vicino >= 1 ? `<li>Non hai ancora nessun capo di questo tipo.</li>` : x.vicino < 0.15 ? `<li>Il colore somiglia a un capo che hai già: in classifica conta un po' meno.</li>` : ""}
+          ${x.vicino < 0.15 ? `<li>Il colore somiglia a un capo che hai già: in classifica conta un po' meno.</li>` : ""}
           ${x.pelle ? `<li>${esc(x.pelle.testo)}</li>` : ""}
         </ul>
         ${x.alternative.length ? `<p class="anche">Funziona anche in ${x.alternative.map((a) => `<span><i style="--c:${esc(a.capo.hex)}"></i>${esc(a.capo.colore)}</span>`).join(" ")}</p>` : ""}
         ${x.esempi.length ? `<p class="per-esempio">Per esempio</p>${x.esempi.map(miniLook).join("")}` : ""}
       </div>
     </li>`).join("")}</ol>` : `<p class="avviso">Il tuo armadio copre già bene ogni combinazione: nessun posto vuoto che valga la spesa.</p>`}
-    <p class="stima">Versatilità = quanti outfit nuovi e ben riusciti il capo sblocca, rispetto al primo in lista. Stime dai colori delle foto e dalle regole di stile.</p>
+    <p class="stima">In ordine di quanti outfit nuovi e ben riusciti il capo sblocca. Stime dai colori delle foto e dalle regole di stile.</p>
   </div>`;
 }
 
@@ -569,7 +571,7 @@ const fissiDaHash = () => (location.hash.match(/^#crea\/([\w,]+)/)?.[1].split(",
 const SLOT_CREA = ["mid", "base", "bottom", "shoes", "belt"];
 const LUCCHETTO = `<svg viewBox="0 0 20 20" aria-hidden="true"><rect x="4.5" y="9" width="11" height="8" rx="1.6"/><path d="M7 9V6.6a3 3 0 0 1 6 0V9"/></svg>`;
 const X = `<svg viewBox="0 0 20 20" aria-hidden="true"><path d="m5.5 5.5 9 9m0-9-9 9"/></svg>`;
-const nomeCapo = (c) => `${cap(c.categoria)} ${c.nomeColore}${marca(c) ? ", " + marca(c) : ""}`;
+const nomeCapo = (c) => `${cap(c.categoria)} ${c.nomeColore}${marca(c) ? ", " + marca(c) : ""}${c.dettaglio ? `, ${c.dettaglio}` : ""}`;
 
 // cinque caselle, una per strato: o il capo fissato o "Auto" (lo completa closetune)
 function slotCrea(s, c) {
@@ -616,7 +618,7 @@ function apriPicker(s) {
       ${capi.map((c) => `${c === primoNo ? `<li class="picker-sep" role="presentation">Non vanno con i capi già fissati</li>` : ""}<li data-fam="${c.famiglia}"><button type="button" class="opzione${ok.has(c) ? "" : " no"}" data-metti="${esc(c.id)}" aria-pressed="${c === attuale}" aria-label="${esc(nomeCapo(c))}${ok.has(c) ? "" : ", non va con i capi fissati"}">
         <span class="cornice">${visuale(c)}</span>
         <span class="opzione-nome">${esc(cap(c.categoria))}</span>
-        <span class="opzione-colore"><i style="--c:${esc(c.hex)}"></i>${esc(c.nomeColore)}</span>${marca(c) ? `<span class="marca-capo">${esc(marca(c))}</span>` : ""}</button></li>`).join("")}
+        <span class="opzione-colore"><i style="--c:${esc(c.hex)}"></i>${esc(c.nomeColore)}</span>${marca(c) || c.dettaglio ? `<span class="marca-capo">${esc([marca(c), c.dettaglio].filter(Boolean).join(" · "))}</span>` : ""}</button></li>`).join("")}
     </ul></div>`;
   d.showModal();
   d.querySelector('[aria-pressed="true"]').focus();
@@ -764,15 +766,6 @@ document.addEventListener("click", (e) => {
     window.scrollTo(0, y);
     $(id ? `.guida .primario, [data-appeso="${id}"]` : ".indietro")?.focus({ preventScroll: true });
   }
-  else if (t.dataset.pausa) {
-    const p = pause(), id = t.dataset.pausa;
-    if (inPausa(p).has(id)) delete p[id]; else p[id] = Date.now() + GIORNI_PAUSA * 864e5;
-    localStorage.setItem(PAUSA, JSON.stringify(p));
-    st.oggiPezzi = null;
-    main.classList.add("fermo");
-    render();
-    $("[data-pausa]")?.focus({ preventScroll: true });
-  }
   else if (t.id === "svuota") { history.replaceState(null, "", "#crea"); main.classList.add("fermo"); vistaCrea(); }
   else if (t.dataset.uscita) {
     st.uscita = t.dataset.uscita;
@@ -782,11 +775,14 @@ document.addEventListener("click", (e) => {
     if (inOggi()) { vistaOggi(); $(`[data-uscita="${st.uscita}"]`).focus(); } else risultatiCrea();
   }
   else if (t.id === "rimescola" || t.id === "precedente") {
-    st.giro += t.id === "rimescola" ? 1 : -1;
+    st.verso = t.id === "rimescola" ? 1 : -1;
+    st.giro += st.verso;
+    st.evita = st.oggiCorrente?.pezzi.map((p) => p.id);
     st.oggiPezzi = null;
     vistaOggi();
     $(`#${st.giro || t.id === "rimescola" ? t.id : "rimescola"}`).focus();
   }
+  else if (t.dataset.tornaOggi !== undefined) { st.oggiPezzi = indossatoOggi(); main.classList.add("fermo"); vistaOggi(); $("[data-indossa]").focus({ preventScroll: true }); }
   else if (t.dataset.cambia) apriAlternative(t.dataset.cambia);
   else if (t.dataset.scegli) {
     const nuovo = st.capi.find((c) => c.id === t.dataset.scegli);

@@ -105,7 +105,7 @@ h1, h2, h3 { margin: 0; font-weight: 400; }
 [hidden] { display: none !important; }
 .seg { display: flex; padding: 3px; background: var(--tinta); border-radius: 999px; }
 .seg button {
-  flex: 1 auto; min-height: 34px; padding: 0 10px; white-space: nowrap; border: 0; border-radius: 999px; background: none; cursor: pointer;
+  flex: 1 auto; min-height: 44px; padding: 0 12px; white-space: nowrap; border: 0; border-radius: 999px; background: none; cursor: pointer;
   font-size: 13px; color: var(--muted); transition: background .2s, color .2s, box-shadow .2s;
 }
 .seg button:hover { color: var(--ink); }
@@ -716,7 +716,9 @@ html:has(.picker[open]) { overflow: hidden; }
 .carta-componi { position: absolute; z-index: 1; top: 4px; right: 4px; display: inline-flex; align-items: center; gap: 5px; min-height: 44px; padding: 0 14px 0 12px; color: var(--ink); text-decoration: none; font: 500 12.5px/1 var(--sans); }
 .carta-componi::before { content: ""; position: absolute; inset: 6px 0; border-radius: 999px; background: rgb(255 255 255 / .92); box-shadow: 0 1px 4px rgb(40 30 20 / .2); transition: background .2s; }
 .carta-componi:hover::before { background: #fff; }
-.carta-componi span { position: relative; }
+/* "Crea un look" è un'icona: una galleria di pillole uguali copre le foto */
+.carta-componi { padding: 0 10px; }
+.carta-componi span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
 .carta-componi svg { position: relative; width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
 .componi-capo { margin-top: 16px; }
 .componi-capo svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
@@ -800,9 +802,7 @@ h2.n-abb { font: 400 14px/1.4 var(--sans); }
 .guida h2 { margin: 4px 0 8px; font-size: 26px; }
 .guida p { margin: 0 0 12px; }
 
-/* in lavatrice */
-.in-pausa { font-style: normal; font-size: 12px; color: var(--muted); }
-.pausa { font-size: 14px; }
+/* meteo */
 .meteo-chip { display: inline-flex; align-items: center; gap: 8px; margin: 0 0 16px; padding: 8px 14px; border: 1px solid var(--line); border-radius: 999px; background: none; color: var(--ink); font: 500 13.5px/1.2 var(--sans); cursor: pointer; }
 .meteo-chip svg { width: 16px; height: 16px; }
 
@@ -810,11 +810,13 @@ h2.n-abb { font: 400 14px/1.4 var(--sans); }
   .guida { grid-template-columns: 1fr; gap: 12px; padding: 14px; }
   .guida .cornice { width: 132px; }
   .guida h2 { font-size: 21px; }
-  /* "Crea un look" diventa un'icona: due colonne di pillole sono rumore */
-  .carta-componi { padding: 0 10px; }
-  .carta-componi span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
   /* in Oggi: il bottone principale resta sotto il pollice, sopra la barra */
   .oggi-look .azioni-look .primario { position: fixed; left: 16px; right: 16px; bottom: calc(80px + env(safe-area-inset-bottom)); z-index: 5; box-shadow: 0 6px 18px rgb(40 30 20 / .22); }
   .oggi:has(.oggi-look) { padding-bottom: 150px; }
   .oggi-azioni #precedente:disabled { display: none; }
 }
+
+/* Oggi: già scelto un look, ma ne stai guardando un altro */
+.scelto-oggi { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin: -12px 0 4px; font-size: 14px; color: var(--muted); }
+.scelto-oggi svg { width: 16px; height: 16px; fill: none; stroke: #3f6b45; stroke-width: 2; }
+.scelto-oggi .link { display: inline-flex; align-items: center; min-height: 44px; margin: 0; }

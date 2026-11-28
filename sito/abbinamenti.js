@@ -75,8 +75,20 @@ export function tipo(categoria) {
 const LIVELLO = { sportivo: 0, outdoor: 0, vacanza: 0, casual: 1, "smart-casual": 2, elegante: 3, cerimonia: 4 };
 
 /** Arricchisce i capi letti dall'API con i campi calcolati. */
-export function prepara(capi) {
+// due capi con lo stesso nome (tipo, colore, marca): il primo pezzo del modello che l'altro non ha li distingue
+const parti = (c) => (c.modello || "").split(",").map((x) => x.trim()).filter(Boolean);
+function distingui(capi) {
+  const chiave = (c) => [c.categoria, c.nomeColore, /^sconosciut/i.test(c.marca || "") ? "" : c.marca].join("|");
   return capi.map((c) => {
+    const gemelli = capi.filter((x) => x !== c && x.stato !== "dismesso" && chiave(x) === chiave(c));
+    if (!gemelli.length) return c;
+    const loro = new Set(gemelli.flatMap(parti));
+    return { ...c, dettaglio: parti(c).find((x) => !loro.has(x)) };
+  });
+}
+
+export function prepara(capi) {
+  return distingui(capi.map((c) => {
     const lch = oklch(c.hex);
     const livelli = (c.occasione || []).map((o) => LIVELLO[o]).filter((x) => x !== undefined);
     const s = slot(c.categoria || "");
@@ -94,7 +106,7 @@ export function prepara(capi) {
       occasione: c.occasione || [],
       nomeColore: (c.colore || "").split(/ con | a | \(|\//)[0].trim(),
     };
-  });
+  }));
 }
 
 export function filtra(capi, f = {}) {
@@ -394,7 +406,8 @@ export function tre(outfit) {
   const scelti = [{ ...primo, carattere: "armonioso" }];
   // cosa cambia rispetto alla prima: la spiegazione parla della differenza, non ripete la stessa formula
   const cambia = (o) => o.pezzi.filter((p) => !primo.pezzi.includes(p));
-  for (const [o, c] of [[elegante, "elegante"], [audace, "audace"]]) if (o) scelti.push({ ...o, carattere: c, cambia: cambia(o) });
+  const con = (o, carattere) => ({ ...o, carattere, cambia: cambia(o) });
+  for (const [o, c] of [[elegante, "elegante"], [audace, "audace"]]) if (o) scelti.push(con(o, c));
   // le altre prendono il nome dalla differenza più forte con la prima, mai due titoli uguali senza un perché
   const luce = (o) => o.pezzi.reduce((s, p) => s + p.lch.L, 0) / o.pezzi.length;
   const differenza = (o) => {
@@ -402,7 +415,16 @@ export function tre(outfit) {
       ["sportivo", (formale(primo) - formale(o)) / 0.4], ["sobrio", (ardito(primo) - ardito(o)) / 0.15]].sort((a, b) => b[1] - a[1])[0];
     return d[1] >= 1 ? d[0] : "alternativa";
   };
-  for (const o of ordine) if (scelti.length < 3 && !scelti.some((x) => x.pezzi === o.pezzi)) scelti.push({ ...o, carattere: differenza(o), cambia: cambia(o) });
+  for (const o of ordine) if (scelti.length < 3 && !scelti.some((x) => x.pezzi === o.pezzi)) scelti.push(con(o, differenza(o)));
+  // il titolo dice cosa la distingue: contro ognuna delle altre, il capo più visibile che quella non ha
+  for (const o of scelti.slice(1)) {
+    const VISTA = o.pezzi.some((p) => p.slot === "mid") ? ["mid", "bottom", "shoes", "base", "belt"] : ["base", "bottom", "shoes", "belt"];
+    const per = (a, b) => (VISTA.indexOf(a.slot) + 10) % 10 - (VISTA.indexOf(b.slot) + 10) % 10;
+    const altri = scelti.filter((x) => x !== o);
+    const tratti = [...new Set(altri.map((x) => o.pezzi.filter((p) => !x.pezzi.includes(p)).sort(per)[0]).filter(Boolean))].sort(per);
+    const tutti = altri.flatMap((x) => x.pezzi);
+    if (tratti.length) o.etichetta = `Con ${tratti.map((p) => `${p.categoria}${tutti.some((q) => q !== p && q.categoria === p.categoria) ? ` ${p.nomeColore}` : ""}`).join(" e ")}`;
+  }
   return [...scelti, ...ordine.filter((o) => !scelti.some((x) => x.pezzi === o.pezzi))];
 }
 
@@ -737,9 +759,13 @@ export function prossimi(capi, { quanti = 4, campioni = 160, approvati = [], str
   });
 }
 
-// ---------- capi in pausa (in lavatrice): fuori da Oggi e Componi fino a una data ----------
-/** pause = { id: fino (ms) }: gli id ancora in pausa adesso. */
-export const inPausa = (pause, ora = Date.now()) => new Set(Object.entries(pause).filter(([, fino]) => fino > ora).map(([id]) => id));
+/** Perché comprarlo, in una riga: il motivo più forte tra tipo mancante, colore che dona al viso, colore nuovo. */
+export function motivo({ vicino, pelle, capo }) {
+  if (vicino >= 1) return "Un tipo di capo che non hai";
+  if (["base", "mid"].includes(capo.slot) && pelle?.voto >= 0.85) return "Un colore che ti dona vicino al viso";
+  if (vicino >= 0.18) return "Un colore che ancora non hai";
+  return "Un'alternativa a quelli che hai";
+}
 
 /** storico = [{ giorno: ms a mezzanotte, ids }]: gli id indossati negli ultimi `giorni` giorni, oggi escluso. */
 export function recenti(storico, oggi = new Date(), giorni = 3) {

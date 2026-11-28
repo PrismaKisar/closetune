@@ -545,6 +545,16 @@ test("tre: la più armoniosa, una più elegante, una più audace, mai ripetute",
   const r4 = m.tre([o([t, j, sn], 0.95), o([t, jl, sn], 0.9)]);
   assert.equal(r4[1].carattere, "luminoso");
   assert.deepEqual(r4[1].cambia, [jl]);
+  // il titolo nomina il capo che solo quella proposta ha: stesso tipo di un'altra → anche il colore
+  assert.equal(r4[1].etichetta, `Con jeans ${jl.nomeColore}`);
+  assert.equal(r3[1].etichetta, `Con cintura ${b2.nomeColore}`);
+  assert.equal(r[2].etichetta, "Con felpa", "lo strato sopra si vede più della maglia");
+  assert.equal(r[1].etichetta, "Con camicia", "senza strato sopra, la camicia è la prima cosa che si vede");
+  // due proposte che differiscono solo nelle scarpe: il titolo dice anche le scarpe
+  const r5 = m.tre([o([t, j, sn], 0.95), o([t, jl, sn], 0.9), o([t, jl, mocc], 0.85)]);
+  const di = (x) => r5.find((o) => o.pezzi.includes(jl) && o.pezzi.includes(x)).etichetta;
+  assert.equal(di(mocc), `Con jeans ${jl.nomeColore} e mocassini`);
+  assert.equal(di(sn), `Con jeans ${jl.nomeColore} e sneaker`, "contro la prima i jeans, contro l'altra le scarpe");
   assert.deepEqual(m.tre([]), []);
   assert.deepEqual(m.tre([calmo]).map((x) => x.carattere), ["armonioso"]);
 });
@@ -699,8 +709,19 @@ test("prossimi per strato: solo capi di quello strato, più colori, al massimo 3
   assert.equal(new Set(tutto.map((x) => x.capo.categoria + x.capo.colore)).size, tutto.length, "niente doppioni nemmeno in Tutto");
 });
 
-test("inPausa: solo i capi la cui pausa non è finita", () => {
-  const ora = 1_000_000;
-  assert.deepEqual([...m.inPausa({ a: ora + 1, b: ora, c: ora - 5 }, ora)], ["a"]);
-  assert.equal(m.inPausa({}, ora).size, 0);
+
+test("motivo: perché comprare il prossimo capo, uno per ogni caso", () => {
+  const capo = (slot) => ({ slot });
+  assert.equal(m.motivo({ vicino: 1, pelle: { voto: 0.9 }, capo: capo("mid") }), "Un tipo di capo che non hai");
+  assert.equal(m.motivo({ vicino: 0.4, pelle: { voto: 0.88 }, capo: capo("base") }), "Un colore che ti dona vicino al viso");
+  assert.equal(m.motivo({ vicino: 0.4, pelle: { voto: 0.88 }, capo: capo("bottom") }), "Un colore che ancora non hai", "le gambe non sono vicino al viso");
+  assert.equal(m.motivo({ vicino: 0.1, capo: capo("shoes") }), "Un'alternativa a quelli che hai");
+});
+
+test("prepara: i capi con lo stesso nome si distinguono dal modello", () => {
+  const k = (id, marca, modello, stato = "attivo") => ({ id, categoria: "maglione", colore: "panna", hex: "#eee", marca, modello, stato });
+  const [a, b, c] = m.prepara([k("a", "Alcott", "dolcevita, coste"), k("b", "Alcott", "girocollo, coste"), k("c", "Zara", "girocollo"), k("d", "Alcott", "girocollo", "dismesso")]);
+  assert.equal(a.dettaglio, "dolcevita");
+  assert.equal(b.dettaglio, "girocollo", "il dismesso d non fa da gemello, sennò girocollo non distinguerebbe");
+  assert.equal(c.dettaglio, undefined, "marca diversa: il nome basta");
 });
