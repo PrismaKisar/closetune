@@ -524,9 +524,23 @@ test("oggi vado a…: i capi versatili stanno in più occasioni, segnala cosa ma
     { id: "s", categoria: "sneaker", hex: "#f1f1ed", colore: "bianco", stato: "attivo", stagione: ["autunno"], occasione: ["casual", "smart-casual"] },
     { id: "t", categoria: "t-shirt", hex: "#191d1f", colore: "nero", stato: "attivo", stagione: ["autunno"], occasione: ["casual"] },
   ]);
-  assert.deepEqual(m.perOccasione(capi, "smart-casual").map((c) => c.id), ["c", "j", "s"]);
+  assert.deepEqual(m.perOccasione(capi, "smart-casual").map((c) => c.id), ["c", "j", "s", "t"], "la t-shirt entra come capo sotto");
   assert.deepEqual(m.perOccasione(capi, "casual").map((c) => c.id), ["j", "s", "t"]);
   assert.deepEqual(m.perOccasione(capi, "elegante", [capi[3]]).map((c) => c.id), ["c", "t"], "i capi fissati restano");
   assert.deepEqual(m.mancaPer(capi, "smart-casual"), []);
   assert.deepEqual(m.mancaPer(capi, "elegante"), ["bottom", "shoes"]);
+});
+
+test("oggi vado a…: la t-shirt casual va in università solo sotto un maglione", () => {
+  const capi = m.prepara([
+    { id: "t", categoria: "t-shirt", hex: "#191d1f", colore: "nero", stato: "attivo", stagione: ["autunno"], occasione: ["casual"] },
+    { id: "m", categoria: "maglione", hex: "#e2dfc6", colore: "panna", stato: "attivo", stagione: ["autunno"], occasione: ["casual", "smart-casual"] },
+    { id: "j", categoria: "jeans", hex: "#33424d", colore: "blu", stato: "attivo", stagione: ["autunno"], occasione: ["casual", "smart-casual"] },
+    { id: "f", categoria: "felpa con cappuccio", hex: "#2c2e2f", colore: "grigio", stato: "attivo", stagione: ["autunno"], occasione: ["casual"] },
+  ]);
+  const [t, mg, j, f] = capi;
+  assert.ok(m.perOccasione(capi, "smart-casual").includes(t));
+  assert.ok(m.vaPer([t, mg, j], "smart-casual"), "coperta dal maglione");
+  assert.ok(!m.vaPer([t, j], "smart-casual"), "da sola resta casual");
+  assert.ok(!m.vaPer([t, f, j], "smart-casual"), "la felpa casual non diventa smart");
 });

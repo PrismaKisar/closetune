@@ -1,4 +1,4 @@
-import { USCITE, perOccasione, mancaPer, diversi, staBene, FAMIGLIE, NOMI_SLOT, TIPI, titoloOutfit, delGiorno, faccette, filtra, giudizio, giudizioPelle, impostaPelle, ordineArcobaleno, outfit, outfitDa, percentuale, prepara, taraSuApprovati, valuta, alternative } from "./abbinamenti.js";
+import { USCITE, perOccasione, vaPer, mancaPer, diversi, staBene, FAMIGLIE, NOMI_SLOT, TIPI, titoloOutfit, delGiorno, faccette, filtra, giudizio, giudizioPelle, impostaPelle, ordineArcobaleno, outfit, outfitDa, percentuale, prepara, taraSuApprovati, valuta, alternative } from "./abbinamenti.js";
 
 const STAGIONI = ["primavera", "estate", "autunno", "inverno"];
 const OCCASIONI = ["casual", "smart-casual", "elegante", "sportivo", "outdoor"];
@@ -308,7 +308,7 @@ function vistaOggi() {
   const meteo = st.meteo?.citta === citta && !st.meteo.errore ? st.meteo : null;
   const attivi = filtra(st.capi, { stato: "attivo" });
   const manca = avvisoUscita(attivi);
-  let { stagione, scelto, outfit: o, adatti } = manca ? { stagione: delGiorno(attivi, oggi).stagione } : delGiorno(perOccasione(attivi, st.uscita), oggi, st.giro, st.approvati, meteo);
+  let { stagione, scelto, outfit: o, adatti } = manca ? { stagione: delGiorno(attivi, oggi).stagione } : delGiorno(perOccasione(attivi, st.uscita), oggi, st.giro, st.approvati, meteo, st.uscita);
   // pezzi cambiati a mano: gli altri restano fermi
   const cambiati = st.oggiPezzi?.map((id) => st.capi.find((c) => c.id === id)).filter(Boolean);
   if (o && cambiati?.length) {
@@ -337,7 +337,7 @@ function vistaOggi() {
 }
 
 function sceltaAlternative(o, slot, pool) {
-  const alt = alternative(o.pezzi, slot, pool, st.approvati).slice(0, 12);
+  const alt = alternative(o.pezzi, slot, pool, st.approvati).filter((a) => vaPer(a.pezzi, st.uscita)).slice(0, 12);
   return `<div class="scelta alternative" id="alternative">
     <h3>Al posto di: ${esc(RUOLO[slot].toLowerCase())} · dalla migliore</h3>
     ${alt.length ? `<ul>${alt.map((a) => {
@@ -444,7 +444,8 @@ function risultatiCrea() {
   const attivi = filtra(st.capi, { stato: "attivo" });
   const manca = avvisoUscita(attivi);
   if (manca) { box.innerHTML = manca; return; }
-  const { outfit: proposti, mancanti, vietato } = outfitDa(fissi, perOccasione(attivi, st.uscita, fissi), { approvati: st.approvati });
+  const r = outfitDa(fissi, perOccasione(attivi, st.uscita, fissi), { approvati: st.approvati });
+  const { mancanti, vietato } = r, proposti = r.outfit.filter((o) => vaPer(o.pezzi, st.uscita, fissi));
   if (vietato) { box.innerHTML = `<p class="avviso">${esc(vietato)} Togli uno dei due capi.</p>`; return; }
   // senza capo sotto (es. dolcevita) l'outfit si fa lo stesso: avviso solo se manca davvero qualcosa
   const manchi = proposti.length ? mancanti.filter((s) => s !== "base") : mancanti;

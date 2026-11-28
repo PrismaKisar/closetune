@@ -282,7 +282,10 @@ export const staBene = (fissi, c) =>
 
 // "Oggi vado a…": un outfit entra se ogni capo ha quell'occasione (i capi versatili stanno in più liste)
 export const USCITE = [["casual", "Tempo libero"], ["smart-casual", "Università / lavoro"], ["elegante", "Serata elegante"]];
-export const perOccasione = (pool, occ, fissi = []) => pool.filter((c) => fissi.includes(c) || c.occasione.includes(occ));
+// la t-shirt sotto un maglione o una felpa si vede appena: va bene per ogni occasione, purché coperta
+const sottoStrato = (c) => c.slot === "base" && /^t-shirt/i.test(c.categoria);
+export const perOccasione = (pool, occ, fissi = []) => pool.filter((c) => fissi.includes(c) || c.occasione.includes(occ) || sottoStrato(c));
+export const vaPer = (pezzi, occ, fissi = []) => pezzi.every((p) => fissi.includes(p) || p.occasione.includes(occ) || (sottoStrato(p) && pezzi.some((x) => x.slot === "mid")));
 // strati senza cui l'outfit non si fa: pantaloni, scarpe e almeno un capo sopra
 export const mancaPer = (pool, occ) => {
   const ok = perOccasione(pool, occ);
@@ -505,7 +508,7 @@ const PIOVE = 50;
 /** L'outfit del giorno: stesso giorno e stesso `giro` danno lo stesso outfit; `giro` + 1 ne propone un altro.
  * Parte da uno strato di sopra della stagione (d'estate dalla base), poi pesca tra i 3 migliori attorno a lui.
  * Con `meteo` la stagione la decide la temperatura di oggi e con la pioggia restano a casa le scarpe in tela. */
-export function delGiorno(pool, data = new Date(), giro = 0, approvati = [], meteo = null) {
+export function delGiorno(pool, data = new Date(), giro = 0, approvati = [], meteo = null, occ = null) {
   const stagione = stagioneDi(data);
   const valide = meteo ? stagioniMeteo(meteo) : [stagione];
   const asciutto = (c) => !(meteo?.pioggia >= PIOVE && temePioggia(c));
@@ -526,10 +529,11 @@ export function delGiorno(pool, data = new Date(), giro = 0, approvati = [], met
   const giusto = (c) => !meteo || (media < 10 ? pesoTessuto(c) >= 3 : media >= 15 ? pesoTessuto(c) <= 2 : true);
   const mid = adatti.filter((c) => c.slot === "mid");
   const sopra = amici(mid.some(giusto) ? mid.filter(giusto) : mid);
-  const partenze = !estivo && sopra.length ? sopra : amici(adatti.filter((c) => c.slot === "base"));
+  const tutte = !estivo && sopra.length ? sopra : amici(adatti.filter((c) => c.slot === "base"));
+  const partenze = occ ? tutte.filter((c) => c.occasione.includes(occ)) : tutte;
   if (!partenze.length) return { stagione, scelto: null, outfit: null };
   const scelto = partenze[Math.floor(r() * partenze.length)];
-  const { outfit: migliori } = outfit(scelto, adatti, { n: 3, approvati });
+  const migliori = outfit(scelto, adatti, { n: occ ? 30 : 3, approvati }).outfit.filter((o) => !occ || vaPer(o.pezzi, occ)).slice(0, 3);
   return { stagione, scelto, adatti, outfit: migliori[Math.floor(r() * migliori.length)] ?? null };
 }
 
