@@ -436,7 +436,17 @@ export function delGiorno(pool, data = new Date(), giro = 0, approvati = [], met
   if (!partenze.length) return { stagione, scelto: null, outfit: null };
   const scelto = partenze[Math.floor(r() * partenze.length)];
   const { outfit: migliori } = outfit(scelto, adatti, { n: 3, approvati });
-  return { stagione, scelto, outfit: migliori[Math.floor(r() * migliori.length)] ?? null };
+  return { stagione, scelto, adatti, outfit: migliori[Math.floor(r() * migliori.length)] ?? null };
+}
+
+/** Le alternative a un pezzo dell'outfit (ruolo `slot`), con gli altri pezzi fermi: dalla migliore. */
+export function alternative(pezzi, slot, pool, approvati = []) {
+  const altri = pezzi.filter((p) => p.slot !== slot);
+  return pool.filter((c) => c.slot === slot && !pezzi.includes(c))
+    .map((c) => [...altri, c])
+    .filter((pz) => stagioneComune(pz) && !gusto(pz).vietato)
+    .map((pz) => valuta(pz, pz.at(-1), approvati))
+    .sort((a, b) => b.punteggio - a.punteggio);
 }
 
 // ---------- ordine arcobaleno ----------

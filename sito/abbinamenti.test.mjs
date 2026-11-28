@@ -423,3 +423,19 @@ test("meteo: la temperatura sceglie gli strati, con la pioggia niente scarpe in 
   }
   assert.deepEqual(m.stagioniMeteo({ min: 25, max: 31 }), ["estate"]);
 });
+
+test("alternative: cambia un pezzo, gli altri restano fermi, mai combinazioni vietate", () => {
+  const tutte = ["primavera", "estate", "autunno", "inverno"];
+  const k = (id, categoria, hex, extra = {}) => ({ id, categoria, hex, colore: "x", stato: "attivo", stagione: tutte, occasione: ["casual"], ...extra });
+  const capi = m.prepara([
+    k("h", "felpa con cappuccio", "#2c2e2f"), k("t", "t-shirt", "#f1f1ed"), k("c", "camicia", "#bbc8da"),
+    k("p", "polo", "#263c47"), k("j", "jeans", "#748991"), k("s", "sneaker", "#d2d4ce"),
+  ]);
+  const [h, t, c, p, j, s] = capi;
+  const alt = m.alternative([h, t, j, s], "base", capi);
+  assert.equal(alt.length, 0, "sotto la hoodie niente camicia né polo");
+  const alt2 = m.alternative([t, j, s], "base", capi);
+  assert.deepEqual(alt2.map((o) => o.pezzi.find((x) => x.slot === "base").id).sort(), ["c", "p"]);
+  assert.ok(alt2.every((o) => o.pezzi.includes(j) && o.pezzi.includes(s)));
+  assert.ok(alt2[0].punteggio >= alt2[1].punteggio);
+});

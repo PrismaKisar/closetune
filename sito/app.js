@@ -1,4 +1,4 @@
-import { FAMIGLIE, NOMI_SLOT, RELAZIONI, TIPI, delGiorno, filtra, giudizio, giudizioPelle, impostaPelle, ordineArcobaleno, outfit, outfitDa, percentuale, prepara, taraSuApprovati, valuta } from "./abbinamenti.js";
+import { FAMIGLIE, NOMI_SLOT, RELAZIONI, TIPI, delGiorno, filtra, giudizio, giudizioPelle, impostaPelle, ordineArcobaleno, outfit, outfitDa, percentuale, prepara, taraSuApprovati, valuta, alternative } from "./abbinamenti.js";
 
 const STAGIONI = ["primavera", "estate", "autunno", "inverno"];
 const OCCASIONI = ["casual", "smart-casual", "elegante", "sportivo", "outdoor"];
@@ -135,7 +135,8 @@ function striscia(pezzi) {
   return `<div class="striscia" aria-hidden="true">${pezzi.map((p) => `<span style="--c:${esc(p.hex)};flex-grow:${p.slot === "base" && conMid ? 9 : PESO_STRISCIA[p.slot]}"></span>`).join("")}</div>`;
 }
 
-function schedaOutfit(o, i, scelto, inGruppo = i, fissi = [scelto]) {
+const SCAMBIA = `<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 7h11.5m-3-3 3 3-3 3M16 13H4.5m3 3-3-3 3-3"/></svg>`;
+function schedaOutfit(o, i, scelto, inGruppo = i, fissi = [scelto], cambia = false) {
   const pezzi = [...o.pezzi].sort((a, b) => ORDINE[a.slot] - ORDINE[b.slot]);
   const titolo = RELAZIONI[o.perche[0]?.tipo]?.nome ?? "Abbinamento";
   const voto = Math.round(o.punteggio * 100);
@@ -153,7 +154,7 @@ function schedaOutfit(o, i, scelto, inGruppo = i, fissi = [scelto]) {
         <span class="ruolo">${p.slot === "base" && !pezzi.some((x) => x.slot === "mid") ? "Sopra" : RUOLO[p.slot]}</span>
         <span class="pezzo-nome">${esc(marca(p) || cap(p.categoria))}</span>
         <span class="pezzo-colore"><i style="--c:${esc(p.hex)}"></i><span>${esc(p.nomeColore)}</span></span>
-      </a></li>`).join("")}</ul>
+      </a>${cambia ? `<button type="button" class="cambia" data-cambia="${esc(p.slot)}" aria-pressed="${st.cambiaSlot === p.slot}" aria-label="Cambia: ${esc(RUOLO[p.slot])}" title="Cambia questo">${SCAMBIA}</button>` : ""}</li>`).join("")}</ul>
       <div class="palette">
         ${striscia(pezzi)}
         <div class="palette-grafici">${ruota(pezzi, scelto)}${luce(pezzi)}</div>
@@ -261,8 +262,15 @@ function vistaOggi() {
   const oggi = new Date();
   const citta = localStorage.getItem(CITTA) ?? "";
   const meteo = st.meteo?.citta === citta && !st.meteo.errore ? st.meteo : null;
-  const { stagione, scelto, outfit: o } = delGiorno(filtra(st.capi, { stato: "attivo" }), oggi, st.giro, st.approvati, meteo);
+  let { stagione, scelto, outfit: o, adatti } = delGiorno(filtra(st.capi, { stato: "attivo" }), oggi, st.giro, st.approvati, meteo);
+  // pezzi cambiati a mano: gli altri restano fermi
+  const cambiati = st.oggiPezzi?.map((id) => st.capi.find((c) => c.id === id)).filter(Boolean);
+  if (o && cambiati?.length) {
+    scelto = cambiati.find((p) => p.slot === "mid") ?? cambiati[0];
+    o = valuta(cambiati, scelto, st.approvati);
+  }
   if (o && meteo) o.perche = [motivoMeteo(meteo), ...o.perche];
+  st.oggiCorrente = o?.pezzi.map((p) => p.id);
   const data = oggi.toLocaleDateString("it-IT", { weekday: "long", day: "numeric", month: "long" });
   const riga = meteo ? `${esc(meteo.nome)} · ${Math.round(meteo.min)}–${Math.round(meteo.max)}°C${meteo.pioggia >= 30 ? ` · pioggia ${meteo.pioggia}%` : ""}`
     : st.meteo?.citta === citta && st.meteo.errore ? esc(st.meteo.errore) : citta ? "Leggo il meteo…" : esc(cap(stagione));
@@ -277,7 +285,20 @@ function vistaOggi() {
         <button type="button" class="btn" id="rimescola">Un altro</button>
       </div>
     </div>
-    ${o ? schedaOutfit(o, st.giro, scelto) : `<p class="avviso">Nessun capo attivo adatto all'${esc(stagione)}.</p>`}
+    ${o && st.cambiaSlot ? sceltaAlternative(o, st.cambiaSlot, adatti) : ""}
+    ${o ? schedaOutfit(o, st.giro, scelto, st.giro, [], true) : `<p class="avviso">Nessun capo attivo adatto all'${esc(stagione)}.</p>`}
+  </div>`;
+}
+
+function sceltaAlternative(o, slot, pool) {
+  const alt = alternative(o.pezzi, slot, pool, st.approvati).slice(0, 12);
+  return `<div class="scelta alternative" id="alternative">
+    <h3>Al posto di: ${esc(RUOLO[slot].toLowerCase())} · dalla migliore</h3>
+    ${alt.length ? `<ul>${alt.map((a) => {
+      const c = a.pezzi.find((p) => p.slot === slot);
+      return `<li><button type="button" data-scegli="${esc(c.id)}" title="${esc(cap(c.categoria))} ${esc(c.colore)}${marca(c) ? ", " + esc(marca(c)) : ""}">
+        <div class="cornice">${visuale(c)}<span class="id">${esc(c.id)}</span></div><span class="voto" title="Armonia su 100">${Math.round(a.punteggio * 100)}</span></button></li>`;
+    }).join("")}</ul>` : `<p class="avviso">Nessun'altra scelta sta bene col resto.</p>`}
   </div>`;
 }
 
@@ -288,6 +309,7 @@ document.addEventListener("submit", (e) => {
   if (citta) localStorage.setItem(CITTA, citta); else localStorage.removeItem(CITTA);
   st.meteo = null;
   st.giro = 0;
+  st.oggiPezzi = st.cambiaSlot = null;
   vistaOggi();
 });
 
@@ -424,7 +446,17 @@ document.addEventListener("click", (e) => {
   else if (t.dataset.fisso) toggleFisso(t.dataset.fisso);
   else if (t.dataset.approva) approva(t);
   else if (t.id === "svuota") { history.replaceState(null, "", "#crea"); vistaCrea(); }
-  else if (t.id === "rimescola") { st.giro++; vistaOggi(); }
+  else if (t.id === "rimescola") { st.giro++; st.oggiPezzi = st.cambiaSlot = null; vistaOggi(); }
+  else if (t.dataset.cambia) {
+    st.cambiaSlot = st.cambiaSlot === t.dataset.cambia ? null : t.dataset.cambia;
+    vistaOggi();
+    $("#alternative")?.scrollIntoView({ behavior: "smooth", block: "center" });
+  } else if (t.dataset.scegli) {
+    const nuovo = st.capi.find((c) => c.id === t.dataset.scegli);
+    st.oggiPezzi = [...st.oggiCorrente.filter((id) => st.capi.find((c) => c.id === id).slot !== nuovo.slot), nuovo.id];
+    st.cambiaSlot = null;
+    vistaOggi();
+  }
   else if (t.id === "apri-filtri" || t.dataset.chiudi !== undefined) {
     const aperto = document.body.classList.toggle("filtri-aperti");
     $("#apri-filtri").setAttribute("aria-expanded", aperto);
