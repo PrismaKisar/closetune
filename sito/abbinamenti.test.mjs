@@ -404,23 +404,22 @@ test("valuta: un preferito ha voto, motivi e pezzi come gli outfit proposti", ()
   assert.ok(Array.isArray(o.perche) && o.perche.length);
 });
 
-test("meteo: la temperatura sceglie gli strati, la pioggia lascia a casa nabuk e lino", () => {
+test("meteo: la temperatura sceglie gli strati, con la pioggia niente scarpe in tela", () => {
   const tutte = ["primavera", "estate", "autunno", "inverno"];
   const capi = m.prepara([
     { id: "t", categoria: "t-shirt", hex: "#f1f1ed", colore: "bianco", stato: "attivo", stagione: tutte, occasione: ["casual"] },
     { id: "w", categoria: "maglione", hex: "#254059", colore: "blu", materiale: "lana", stato: "attivo", stagione: ["autunno", "inverno"], occasione: ["casual"] },
     { id: "j", categoria: "jeans", hex: "#33424d", colore: "blu", stato: "attivo", stagione: tutte, occasione: ["casual"] },
-    { id: "n", categoria: "stivale", hex: "#b0642c", colore: "cuoio", materiale: "nabuk", stato: "attivo", stagione: tutte, occasione: ["casual"] },
-    { id: "s", categoria: "sneaker", hex: "#d2d4ce", colore: "grigio", materiale: "pelle", stato: "attivo", stagione: tutte, occasione: ["casual"] },
+    { id: "c", categoria: "sneaker", hex: "#d2d4ce", colore: "grigio", materiale: "tela di cotone", stato: "attivo", stagione: tutte, occasione: ["casual"] },
+    { id: "s", categoria: "sneaker", hex: "#f1f1ed", colore: "bianco", materiale: "mesh + sintetico", stato: "attivo", stagione: ["primavera", "estate"], occasione: ["casual"] },
   ]);
   const d = new Date(2026, 6, 15); // luglio: senza meteo sarebbe estate
   const ids = (r) => r.outfit.pezzi.map((p) => p.id);
   assert.ok(ids(m.delGiorno(capi, d, 0, [], { min: 2, max: 8, pioggia: 0 })).includes("w"), "freddo: maglione anche a luglio");
   assert.ok(!ids(m.delGiorno(capi, d, 0, [], { min: 24, max: 32, pioggia: 0 })).includes("w"), "caldo: niente lana");
-  for (let g = 0; g < 5; g++) assert.ok(!ids(m.delGiorno(capi, d, g, [], { min: 2, max: 8, pioggia: 80 })).includes("n"), "pioggia: niente nabuk");
+  for (let g = 0; g < 5; g++) {
+    const pz = ids(m.delGiorno(capi, d, g, [], { min: 2, max: 8, pioggia: 80 }));
+    assert.ok(!pz.includes("c") && pz.includes("s"), "pioggia: niente tela; le scarpe estive si usano anche d'inverno");
+  }
   assert.deepEqual(m.stagioniMeteo({ min: 25, max: 31 }), ["estate"]);
-  // freddo e pioggia, unica scarpa invernale in nabuk: meglio una scarpa asciutta fuori stagione che nessuna
-  const soloStivale = capi.map((c) => (c.id === "s" ? { ...c, stagione: ["primavera", "autunno"] } : c));
-  const r = m.delGiorno(soloStivale, d, 0, [], { min: 2, max: 6, pioggia: 90 });
-  assert.ok(ids(r).includes("s"), "una scarpa c'è sempre");
 });

@@ -253,7 +253,7 @@ function motivoMeteo(m) {
   const media = (m.min + m.max) / 2;
   const t = media >= 22 ? "Fa caldo: niente strato sopra, tessuti leggeri." : media >= 15 ? "Mezza stagione: uno strato leggero."
     : media >= 10 ? "Fresco: uno strato sopra." : "Fa freddo: si parte da uno strato pesante.";
-  return { tipo: "meteo", testo: m.pioggia >= 50 ? `${t} Pioggia probabile (${m.pioggia}%): niente scamosciato né lino.` : t };
+  return { tipo: "meteo", testo: m.pioggia >= 50 ? `${t} Pioggia probabile (${m.pioggia}%): niente scarpe in tela.` : t };
 }
 
 function vistaOggi() {

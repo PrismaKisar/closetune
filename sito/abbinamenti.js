@@ -253,8 +253,8 @@ export function punteggioOutfit(pezzi, approvati = []) {
 
 const vicinoAlViso = (pezzi) => pezzi.find((x) => x.slot === "mid") ?? pezzi.find((x) => x.slot === "base");
 
-// la base sta sotto uno strato: si porta in ogni stagione
-const stagioni = (c) => (c.slot === "base" || !c.stagione.length ? ["primavera", "estate", "autunno", "inverno"] : c.stagione);
+// la base sta sotto uno strato: si porta in ogni stagione; le scarpe si usano tutte tutto l'anno
+const stagioni = (c) => (c.slot === "base" || c.slot === "shoes" || !c.stagione.length ? ["primavera", "estate", "autunno", "inverno"] : c.stagione);
 const sovrapponeStagione = (a, b) => stagioni(a).some((s) => stagioni(b).includes(s));
 // senza strato sopra: solo se tutti i pezzi (con le stagioni vere, anche della base) reggono primavera o estate
 const caldo = ["primavera", "estate"];
@@ -404,16 +404,13 @@ export function stagioniMeteo({ min, max }) {
   const m = (min + max) / 2;
   return m >= 22 ? ["estate"] : m >= 15 ? ["primavera", "estate", "autunno"] : m >= 8 ? ["primavera", "autunno", "inverno"] : ["inverno"];
 }
-/** Capi che la pioggia rovina: scamosciato, nabuk, lino, scarpe chiare in tela. */
-export const temePioggia = (c) => {
-  const t = `${c.materiale ?? ""} ${c.modello ?? ""}`.toLowerCase();
-  return /nabuk|scamosciat|camoscio|suede|lino/.test(t) || (c.slot === "shoes" && /tela|canvas/.test(t) && c.lch.L > 0.8);
-};
+/** Con la pioggia non si esce con le scarpe in tela. */
+export const temePioggia = (c) => c.slot === "shoes" && /tela|canvas/i.test(`${c.materiale ?? ""} ${c.modello ?? ""}`);
 const PIOVE = 50;
 
 /** L'outfit del giorno: stesso giorno e stesso `giro` danno lo stesso outfit; `giro` + 1 ne propone un altro.
  * Parte da uno strato di sopra della stagione (d'estate dalla base), poi pesca tra i 3 migliori attorno a lui.
- * Con `meteo` la stagione la decide la temperatura di oggi e con la pioggia restano a casa i capi delicati. */
+ * Con `meteo` la stagione la decide la temperatura di oggi e con la pioggia restano a casa le scarpe in tela. */
 export function delGiorno(pool, data = new Date(), giro = 0, approvati = [], meteo = null) {
   const stagione = stagioneDi(data);
   const valide = meteo ? stagioniMeteo(meteo) : [stagione];
