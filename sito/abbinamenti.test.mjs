@@ -488,6 +488,34 @@ test("diversi: i primi n non si ripetono nei pezzi grandi, poi il resto dal migl
   assert.deepEqual(m.diversi(lista, 0).map((x) => x.punteggio), [0.9, 0.89, 0.88, 0.8, 0.7]);
 });
 
+test("tre: la più armoniosa, una più elegante, una più audace, mai ripetute", () => {
+  const tutte = ["primavera", "estate", "autunno", "inverno"];
+  const k = (id, categoria, hex, occasione = ["casual"]) => ({ id, categoria, hex, colore: "x", stato: "attivo", stagione: tutte, occasione });
+  const [t, cam, j, chino, sn, mocc, rossa] = m.prepara([
+    k("t", "t-shirt", "#e8e6df"), k("cam", "camicia", "#e9ecef", ["elegante"]), k("j", "jeans", "#33424d"),
+    k("chino", "chino", "#2a2c30", ["elegante"]), k("sn", "sneaker", "#ecebe6"), k("mocc", "mocassini", "#3b2a20", ["elegante"]),
+    k("rossa", "felpa", "#b2302a"),
+  ]);
+  const o = (pezzi, punteggio) => ({ pezzi, punteggio });
+  const calmo = o([t, j, sn], 0.95), formale = o([cam, chino, mocc], 0.8), acceso = o([rossa, t, j, sn], 0.75), azzardo = o([rossa, cam, chino, mocc], 0.4);
+  const r = m.tre([acceso, azzardo, formale, calmo]);
+  assert.deepEqual(r.slice(0, 3).map((x) => x.carattere), ["armonioso", "elegante", "audace"]);
+  assert.equal(r[0].pezzi, calmo.pezzi, "prima la più armoniosa");
+  assert.equal(r[1].pezzi, formale.pezzi);
+  assert.equal(r[2].pezzi, acceso.pezzi, "l'azzardata non è mai l'audace");
+  assert.equal(r.length, 4, "nessun outfit perso");
+  assert.equal(new Set(r.map((x) => x.pezzi)).size, 4);
+  // senza un'alternativa più elegante, la seconda arriva dai diversi senza etichetta
+  const r2 = m.tre([calmo, o([t, j, mocc], 0.7)]);
+  assert.deepEqual(r2.map((x) => x.carattere), ["armonioso", "elegante"]);
+  // cambiare solo la cintura non fa un carattere
+  const [b1, b2] = m.prepara([k("b1", "cintura", "#3b2a20"), k("b2", "cintura", "#191d1f", ["elegante"])]);
+  const r3 = m.tre([o([t, j, sn, b1], 0.95), o([t, j, sn, b2], 0.9)]);
+  assert.deepEqual(r3.map((x) => x.carattere), ["armonioso", null]);
+  assert.deepEqual(m.tre([]), []);
+  assert.deepEqual(m.tre([calmo]).map((x) => x.carattere), ["armonioso"]);
+});
+
 test("titoloOutfit: titoli descrittivi dai colori veri", () => {
   const k = (id, categoria, hex, colore) => ({ id, categoria, hex, colore, stato: "attivo", stagione: [], occasione: ["casual"] });
   const c = Object.fromEntries(m.prepara([

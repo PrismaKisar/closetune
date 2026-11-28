@@ -1,4 +1,4 @@
-import { USCITE, perOccasione, vaPer, mancaPer, diversi, staBene, FAMIGLIE, NOMI_SLOT, TIPI, titoloOutfit, delGiorno, effetto, cielo, faccette, filtra, giudizio, giudizioPelle, impostaPelle, ordineArcobaleno, outfit, outfitDa, percentuale, prepara, taraSuApprovati, valuta, alternative } from "./abbinamenti.js";
+import { USCITE, perOccasione, vaPer, mancaPer, tre, staBene, FAMIGLIE, NOMI_SLOT, TIPI, titoloOutfit, delGiorno, effetto, cielo, faccette, filtra, giudizio, giudizioPelle, impostaPelle, ordineArcobaleno, outfit, outfitDa, percentuale, prepara, taraSuApprovati, valuta, alternative } from "./abbinamenti.js";
 
 const STAGIONI = ["primavera", "estate", "autunno", "inverno"];
 const OCCASIONI = ["casual", "smart-casual", "elegante", "sportivo", "outdoor"];
@@ -28,6 +28,9 @@ function avvisoUscita(pool) {
   return `<p class="avviso">Per ${esc(nome)} ti mancano: <b>${esc(manca.map((s) => NOMI_SLOT[s]).join(", "))}</b>. Fotografa e censisci quei capi e compariranno qui.</p>`;
 }
 const $ = (s, el = document) => el.querySelector(s);
+// Oggi è la pagina iniziale: nessun hash, "#" o "#oggi"
+const eOggi = (h) => !h || h === "#" || h === "#oggi";
+const inOggi = () => eOggi(location.hash);
 const main = $("#contenuto");
 const esc = (s = "") => String(s).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 const cap = (s = "") => s.charAt(0).toUpperCase() + s.slice(1);
@@ -54,7 +57,7 @@ const sagoma = (s) => `<svg class="sagoma" viewBox="0 0 64 64" aria-hidden="true
 
 // tipo prima, poi colore, la marca per ultima; pos = posto nell'ordine per colore
 function carta(c, pos) {
-  return `<li class="carta">${c.stato === "attivo" ? `<a class="carta-componi" href="#crea/${esc(c.id)}" aria-label="Componi un outfit con ${esc(nomeCapo(c))}" title="Componi un outfit con questo">${GRUCCIA}</a>` : ""}<a class="capo${c.stato !== "attivo" ? " spento" : ""}" href="#capo/${esc(c.id)}">
+  return `<li class="carta">${c.stato === "attivo" ? `<a class="carta-componi" href="#crea/${esc(c.id)}" aria-label="Crea un look con ${esc(nomeCapo(c))}">${GRUCCIA}<span>Crea un look</span></a>` : ""}<a class="capo${c.stato !== "attivo" ? " spento" : ""}" href="#capo/${esc(c.id)}">
     <div class="cornice">${visuale(c)}${pos ? `<span class="pos">${pos}</span>` : ""}</div>
     <div class="capo-testo">
       <span class="nome">${esc(cap(c.categoria))}</span>
@@ -190,9 +193,9 @@ function schedaOutfit(o, { i = 0, scelto = o.pezzi[0], fissi = [scelto], oggi = 
   // nella composizione: strato sopra e pantaloni grandi, il resto piccolo; senza strato la base prende il suo posto
   const area = (p) => (p.slot === "base" && !pezzi.some((x) => x.slot === "mid") ? "mid" : p.slot);
   const h = `h${livello}`;
-  // nelle liste (scheda del capo, Componi) i capi fissi stanno già in alto: qui solo quelli che cambiano
-  const visti = !oggi && fissi.length && pezzi.some((p) => !fissi.includes(p)) ? pezzi.filter((p) => !fissi.includes(p)) : pezzi;
-  const foto = `<ul class="pezzi${oggi ? " look" : ""}" style="--n:${visti.length}">${visti.map((p) => `<li${oggi ? ` style="grid-area:${area(p)}" class="a-${area(p)}"` : ""}><a class="pezzo" href="#capo/${esc(p.id)}" title="${esc(nomeCapo(p))}">
+  // l'outfit intero, sempre: i capi scelti da te hanno il segno "fisso"
+  const fisso = (p) => !oggi && fissi.includes(p) && pezzi.some((x) => !fissi.includes(x));
+  const foto = `<ul class="pezzi${oggi ? " look" : ""}" style="--n:${pezzi.length}">${pezzi.map((p) => `<li${oggi ? ` style="grid-area:${area(p)}" class="a-${area(p)}"` : fisso(p) ? ' class="fisso"' : ""}><a class="pezzo" href="#capo/${esc(p.id)}" title="${esc(nomeCapo(p))}">
       <div class="cornice">${visuale(p)}</div>
       <span class="ruolo">${esc(tipoCapo(p))}</span>
       <span class="pezzo-nome">${esc(marca(p) || p.nomeColore)}</span>
@@ -236,7 +239,7 @@ function schedaOutfit(o, { i = 0, scelto = o.pezzi[0], fissi = [scelto], oggi = 
   return `<article class="outfit" style="--i:${i}">
     <header class="outfit-testa">
       <${h}>${esc(titoloOutfit(pezzi))}</${h}>
-      <span class="armonia" data-v="${g}" title="${SPIEGA_ARMONIA}">Armonia <b>${ARMONIA[g]}</b></span>
+      ${o.carattere ? `<span class="carattere" data-c="${o.carattere}">${CARATTERE[o.carattere]}</span>` : o.carattere === null ? "" : `<span class="armonia" data-v="${g}" title="${SPIEGA_ARMONIA}">Armonia <b>${ARMONIA[g]}</b></span>`}
       ${bottoneCuore(o.pezzi)}
     </header>
     ${foto}
@@ -246,10 +249,11 @@ function schedaOutfit(o, { i = 0, scelto = o.pezzi[0], fissi = [scelto], oggi = 
 }
 const SPUNTA = `<svg viewBox="0 0 20 20" aria-hidden="true"><path d="m4.5 10.5 3.5 3.5 7.5-8"/></svg>`;
 
-// prima i 5 migliori diversi tra loro (diversi), poi gli altri a gruppi, solo su richiesta
-const PRIMI = 5, PASSO = 6;
+// prima tre proposte con un carattere (tre), poi le altre a gruppi, solo su richiesta
+const PRIMI = 3, PASSO = 6;
+const CARATTERE = { armonioso: "La più armoniosa", elegante: "Più elegante", audace: "Più audace" };
 let lista = { outfit: [], scelto: null, mostrati: 0 };
-const contaOutfit = (n, nome = "abbinamenti") => n > PRIMI ? `${PRIMI} ${nome} consigliati, diversi tra loro · ${n} possibili` : `${n} ${nome}, dal migliore`;
+const contaOutfit = (n) => (n === 1 ? "Una proposta" : `${Math.min(n, PRIMI)} proposte per te`);
 
 function altriOutfit() {
   const { outfit: tutti, scelto, mostrati, fissi = [scelto] } = lista;
@@ -259,7 +263,7 @@ function altriOutfit() {
   const restano = tutti.length - lista.mostrati;
   const btn = $("#altri");
   btn.hidden = restano <= 0;
-  btn.textContent = `Mostra altri ${Math.min(PASSO, restano)} · ne restano ${restano}`;
+  btn.textContent = `Mostra altre ${Math.min(PASSO, restano)} combinazioni`;
 }
 
 function vistaDettaglio(c) {
@@ -278,11 +282,11 @@ function vistaDettaglio(c) {
 
   main.innerHTML = `<div class="dettaglio">
     <section class="scheda" aria-labelledby="titolo-capo">
-      <a class="indietro" href="#">Tutti i capi</a>
+      <a class="indietro" href="#armadio">Tutti i capi</a>
       <div class="cornice grande">${visuale(c, true)}</div>
       <p class="marca">${esc(marca(c) || "Senza marca")} · <span>${esc(c.id)}</span></p>
       <h1 id="titolo-capo">${esc(cap(c.categoria))}</h1>
-      ${c.stato === "attivo" ? `<a class="btn primario componi-capo" href="#crea/${esc(c.id)}">${GRUCCIA}Componi un outfit con questo</a>` : ""}
+      ${c.stato === "attivo" ? `<a class="btn primario componi-capo" href="#crea/${esc(c.id)}">${GRUCCIA}Abbina questo capo</a>` : ""}
       <details class="dettagli-capo"${matchMedia("(max-width: 600px)").matches ? "" : " open"}><summary>Dettagli del capo</summary>
       <dl class="info">${righe.map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`).join("")}</dl>
       ${c.note ? `<p class="note">${esc(c.note)}</p>` : ""}
@@ -304,12 +308,12 @@ function vistaDettaglio(c) {
       ${c.stato === "casa" ? `<p class="avviso">Capo da casa: è censito ma non entra negli abbinamenti.</p>` : ""}
       ${mancanti.length ? `<p class="avviso">Nessun capo ${st.pool === "attivo" ? "attivo " : ""}adatto tra: <b>${esc(nomiMancanti)}</b>.${st.pool === "attivo" ? ' <button type="button" class="link" data-pool="tutti">Cerca anche tra i dismessi</button>' : ""}</p>` : ""}
       ${approvati.length ? `<div class="approvati"><h3>${CUORE}Nei tuoi preferiti · ${approvati.length}</h3><ul>${approvati.map((o) => `<li aria-label="${esc(titoloOutfit(o))}">${[...o].sort((a, b) => ORDINE[a.slot] - ORDINE[b.slot]).map((p) => `<a href="#capo/${esc(p.id)}" class="${p === c ? "attuale" : ""}" title="${esc(cap(p.categoria))} ${esc(p.colore)}${marca(p) ? ", " + esc(marca(p)) : ""}"><div class="cornice">${visuale(p)}</div></a>`).join("")}</li>`).join("")}</ul></div>` : ""}
-      ${proposti.length ? `<p class="n-abb" aria-live="polite">${proposti.length === 1 ? "1 abbinamento" : contaOutfit(proposti.length, "abbinamenti")}</p>` : ""}
+      ${proposti.length ? `<p class="n-abb" aria-live="polite">${contaOutfit(proposti.length)}</p>` : ""}
       <div id="lista-outfit"></div>
       <button type="button" class="btn altri" id="altri" hidden></button>
     </section>
   </div>`;
-  lista = { outfit: diversi(proposti), scelto: c, mostrati: 0 };
+  lista = { outfit: tre(proposti), scelto: c, mostrati: 0 };
   altriOutfit();
 }
 
@@ -329,7 +333,7 @@ function aggiornaMeteo() {
   st.meteoInCorso = true;
   caricaMeteo(citta)
     .then((m) => { st.meteo = m; }, (e) => { st.meteo = { citta, errore: e.message === "citta" ? "Città non trovata." : "Meteo non raggiungibile: uso la stagione." }; })
-    .finally(() => { st.meteoInCorso = false; if (location.hash === "#oggi") vistaOggi(); });
+    .finally(() => { st.meteoInCorso = false; if (inOggi()) vistaOggi(); });
 }
 function motivoMeteo(m) {
   const media = (m.min + m.max) / 2;
@@ -359,7 +363,7 @@ function rigaMeteo(citta, meteo) {
   if (meteo && !st.modificaCitta) return `<div class="meteo">${meteo.cielo ? `<svg viewBox="0 0 20 20" aria-hidden="true">${CIELO[meteo.cielo]}</svg>` : PIN}<p><b>${esc(meteo.nome)}</b>${meteo.cielo ? ` · ${meteo.cielo}` : ""} · ${Math.round(meteo.min)}–${Math.round(meteo.max)}°C${meteo.pioggia >= 30 ? ` · pioggia ${meteo.pioggia}%` : ""}<span>${esc(motivoMeteo(meteo).testo)}</span></p><button type="button" class="link" data-modifica-citta>Cambia città</button></div>`;
   if (citta && !errore && !st.modificaCitta) return `<div class="meteo" role="status">${PIN}<p>Leggo il meteo di ${esc(citta)}…</p></div>`;
   return `<form class="meteo citta" id="form-citta">${PIN}<label for="citta">${errore ? esc(errore) : "Con la tua città scelgo gli strati in base alla temperatura di oggi."}</label>
-    <span class="citta-campo"><input id="citta" name="citta" placeholder="La tua città" value="${esc(citta)}" autocomplete="address-level2" enterkeyhint="done"><button class="btn">Usa</button></span></form>`;
+    <span class="citta-campo"><input id="citta" name="citta" placeholder="La tua città" value="${esc(citta)}" autocomplete="address-level2" enterkeyhint="done"><button class="btn">Imposta città</button></span></form>`;
 }
 
 // "Lo metto oggi": resta per tutta la giornata (solo su questo dispositivo)
@@ -397,7 +401,7 @@ function vistaOggi() {
       <div><p class="marca">${esc(cap(data))}</p><h1>Cosa indosso oggi?</h1></div>
       <div class="oggi-azioni"${o ? "" : " hidden"}>
         <button type="button" class="btn secondario" id="precedente"${st.giro ? "" : " disabled"}>Precedente</button>
-        <button type="button" class="btn" id="rimescola">Un altro outfit</button>
+        <button type="button" class="btn secondario" id="rimescola">Un altro outfit</button>
       </div>
     </div>
     ${rigaMeteo(citta, meteo)}
@@ -416,7 +420,7 @@ function apriAlternative(slot) {
   const d = $("#picker");
   d.dataset.slot = slot;
   d.innerHTML = `<div class="picker-dentro">
-    <div class="picker-testa"><div><h2 id="picker-titolo">Al posto di: ${esc(tipoCapo(attuale).toLowerCase())}</h2><p>Gli altri capi restano fermi · dalla scelta migliore</p></div>
+    <div class="picker-testa"><div><h2 id="picker-titolo">Sostituisci ${esc(tipoCapo(attuale).toLowerCase())}</h2><p>Cambia solo questo capo, il resto resta com'è</p></div>
       <button type="button" class="picker-chiudi" data-chiudi-picker aria-label="Chiudi">${X}</button></div>
     ${alt.length ? `<ul class="alt-lista">${alt.map((a, k) => {
       const c = a.pezzi.find((p) => p.slot === slot);
@@ -446,7 +450,7 @@ document.addEventListener("submit", (e) => {
 function vistaArcobaleno() {
   const capi = ordineArcobaleno(st.capi);
   main.innerHTML = `<div class="oggi arcobaleno">
-    <a class="indietro" href="#">Tutti i capi</a>
+    <a class="indietro" href="#armadio">Tutti i capi</a>
     <div class="oggi-testa"><div><p class="marca">${capi.length} capi sopra · da appendere in quest'ordine</p><h1>Organizza per colore</h1></div></div>
     <ol class="sequenza" aria-label="La sequenza, da sinistra a destra">${capi.map((c, i) => `<li style="--c:${esc(c.hex)}" title="${i + 1}. ${esc(nomeCapo(c))}"><span>${i + 1}</span></li>`).join("")}</ol>
     <ol class="griglia">${capi.map((c, i) => carta(c, i + 1)).join("")}</ol>
@@ -469,6 +473,7 @@ function vistaPreferiti() {
 const fissiDaHash = () => (location.hash.match(/^#crea\/([\w,]+)/)?.[1].split(",") ?? [])
   .map((id) => st.capi.find((c) => c.id === id)).filter((c, i, a) => c && a.findIndex((x) => x?.slot === c.slot) === i);
 const SLOT_CREA = ["mid", "base", "bottom", "shoes", "belt"];
+const LUCCHETTO = `<svg viewBox="0 0 20 20" aria-hidden="true"><rect x="4.5" y="9" width="11" height="8" rx="1.6"/><path d="M7 9V6.6a3 3 0 0 1 6 0V9"/></svg>`;
 const X = `<svg viewBox="0 0 20 20" aria-hidden="true"><path d="m5.5 5.5 9 9m0-9-9 9"/></svg>`;
 const nomeCapo = (c) => `${cap(c.categoria)} ${c.nomeColore}${marca(c) ? ", " + marca(c) : ""}`;
 
@@ -476,9 +481,9 @@ const nomeCapo = (c) => `${cap(c.categoria)} ${c.nomeColore}${marca(c) ? ", " + 
 function slotCrea(s, c) {
   return `<li class="slot${c ? " pieno" : ""}">
     <button type="button" class="slot-apri" data-apri="${s}" aria-haspopup="dialog" aria-label="${RUOLO[s]}: ${c ? `${esc(nomeCapo(c))}, scelto da te. Cambia` : "lo sceglie closetune. Scegli un capo"}">
-      <span class="cornice">${c ? visuale(c) : `<span class="auto" aria-hidden="true">${sagoma(s)}</span>`}</span>
+      <span class="cornice">${c ? `${visuale(c)}<span class="slot-tag fisso">${LUCCHETTO}<span>Scelto da te</span></span>` : `<span class="auto" aria-hidden="true">${sagoma(s)}</span>`}</span>
       <span class="ruolo">${RUOLO[s]}</span>
-      <span class="slot-stato">${c ? esc(marca(c) || cap(c.categoria)) : "Scegli tu o lascia a me"}</span>
+      <span class="slot-stato">${c ? esc(marca(c) || cap(c.categoria)) : "Tocca per scegliere"}</span>
     </button>
     ${c ? `<button type="button" class="slot-togli" data-auto="${s}" aria-label="Togli ${esc(nomeCapo(c))}">${X}</button>` : ""}
   </li>`;
@@ -487,7 +492,7 @@ function slotCrea(s, c) {
 function vistaCrea() {
   const fissi = fissiDaHash();
   main.innerHTML = `<div class="oggi crea">
-    <div class="oggi-testa"><div><p class="marca">Scegli i capi che vuoi · il resto lo completo io</p><h1>Componi</h1></div>
+    <div class="oggi-testa"><div><p class="marca">Fissa i capi che vuoi · il resto lo suggerisco io</p><h1>Componi</h1></div>
       <button type="button" class="btn" id="svuota"${fissi.length ? "" : " hidden"}>Azzera</button></div>
     ${sceltaUscita()}
     <ul class="slot-crea" aria-label="Il tuo outfit">${SLOT_CREA.map((s) => slotCrea(s, fissi.find((f) => f.slot === s))).join("")}</ul>
@@ -539,15 +544,15 @@ function risultatiCrea() {
     <h2 class="n-abb" aria-live="polite">${proposti.length ? contaOutfit(proposti.length) : "Questi capi non stanno insieme: stagione, formalità o stile troppo diversi."}</h2>
     <div id="lista-outfit"></div>
     <button type="button" class="btn altri" id="altri" hidden></button>`;
-  lista = { outfit: diversi(proposti), scelto: fissi[0], fissi, mostrati: 0 };
+  lista = { outfit: tre(proposti), scelto: fissi[0], fissi, mostrati: 0 };
   altriOutfit();
   // anteprima: le caselle libere mostrano, sbiaditi, i capi del primo abbinamento
   for (const p of lista.outfit[0]?.pezzi ?? []) {
     const li = $(`[data-apri="${p.slot}"]`)?.closest(".slot");
     if (!li || li.classList.contains("pieno")) continue;
     li.classList.add("proposto");
-    li.querySelector(".cornice").innerHTML = visuale(p);
-    li.querySelector(".slot-stato").textContent = `Proposto: ${marca(p) || p.nomeColore}`;
+    li.querySelector(".cornice").innerHTML = `${visuale(p)}<span class="slot-tag"><span>Suggerito</span></span>`;
+    li.querySelector(".slot-stato").textContent = marca(p) || p.nomeColore;
   }
 }
 
@@ -566,10 +571,11 @@ function fissa(s, id) {
 function render() {
   const m = location.hash.match(/^#capo\/(\w+)/);
   const c = m && st.capi.find((x) => x.id === m[1]);
-  const oggi = location.hash === "#oggi";
+  const armadio = location.hash === "#armadio";
   const arcobaleno = location.hash === "#arcobaleno";
   const crea = location.hash.startsWith("#crea");
   const preferiti = location.hash === "#preferiti";
+  const oggi = !(c || armadio || arcobaleno || crea || preferiti);
   document.body.classList.toggle("in-dettaglio", !!c || oggi || arcobaleno || crea || preferiti);
   // la sezione corrente: "page" sulla pagina stessa, "true" sulle sottopagine dell'armadio
   const corrente = { "vai-oggi": oggi && "page", "vai-crea": crea && "page", "vai-preferiti": preferiti && "page",
@@ -588,19 +594,19 @@ function render() {
     vistaArcobaleno();
     document.title = "Organizza per colore · closetune";
     window.scrollTo(0, 0);
-  } else if (oggi) {
-    vistaOggi();
-    document.title = "Outfit di oggi · closetune";
-    window.scrollTo(0, 0);
   } else if (c) {
     vistaDettaglio(c);
     document.title = `${cap(c.categoria)} ${c.nomeColore} · closetune`;
     window.scrollTo(0, 0);
-  } else {
+  } else if (armadio) {
     const y = st.scrollGriglia ?? 0;
     vistaArmadio();
-    document.title = "closetune";
+    document.title = "Armadio · closetune";
     window.scrollTo(0, y);
+  } else {
+    vistaOggi();
+    document.title = "closetune";
+    window.scrollTo(0, 0);
   }
 }
 
@@ -643,7 +649,7 @@ document.addEventListener("click", (e) => {
     localStorage.setItem("closetune-uscita", st.uscita);
     document.querySelectorAll("[data-uscita]").forEach((b) => b.setAttribute("aria-pressed", b === t));
     st.giro = 0; st.oggiPezzi = null;
-    if (location.hash === "#oggi") { vistaOggi(); $(`[data-uscita="${st.uscita}"]`).focus(); } else risultatiCrea();
+    if (inOggi()) { vistaOggi(); $(`[data-uscita="${st.uscita}"]`).focus(); } else risultatiCrea();
   }
   else if (t.id === "rimescola" || t.id === "precedente") {
     st.giro += t.id === "rimescola" ? 1 : -1;
@@ -685,10 +691,10 @@ document.addEventListener("keydown", (e) => {
 
 $("#cerca").addEventListener("input", (e) => {
   st.f.testo = e.target.value;
-  if (location.hash && location.hash !== "#") {
+  if (location.hash !== "#armadio") {
     Object.assign(st.f, { stato: "attivo", tipi: [], famiglie: [], stagioni: [], occasioni: [] });
     st.pool = "attivo";
-    location.hash = "";
+    location.hash = "armadio";
   } else aggiornaArmadio();
 });
 

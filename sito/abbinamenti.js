@@ -356,9 +356,11 @@ export function outfitDa(fissi, pool, { n = Infinity, approvati = [], perSlot = 
  * con una penalità per i pezzi in comune con quelli già scelti: pesano di più i pezzi grandi,
  * quasi nulla la cintura), poi tutti gli altri dal migliore. */
 const PESO_PEZZO = { mid: 3, base: 2, bottom: 3, shoes: 2, belt: 0.5 };
+// quanto due outfit condividono, pesato per pezzo (la cintura conta poco, felpa e pantaloni molto)
+const pesoPezzi = (pz) => pz.reduce((s, p) => s + PESO_PEZZO[p.slot], 0);
+const simile = (a, b) => pesoPezzi(a.pezzi.filter((p) => b.pezzi.includes(p))) / Math.max(pesoPezzi(a.pezzi), pesoPezzi(b.pezzi));
+
 export function diversi(outfit, n = 5, forza = 0.35) {
-  const peso = (pz) => pz.reduce((s, p) => s + PESO_PEZZO[p.slot], 0);
-  const simile = (a, b) => peso(a.pezzi.filter((p) => b.pezzi.includes(p))) / Math.max(peso(a.pezzi), peso(b.pezzi));
   const resto = [...outfit].sort((a, b) => b.punteggio - a.punteggio);
   const scelti = [];
   while (scelti.length < n && resto.length) {
@@ -370,6 +372,29 @@ export function diversi(outfit, n = 5, forza = 0.35) {
     scelti.push(...resto.splice(i, 1));
   }
   return [...scelti, ...resto];
+}
+
+/**
+ * Tre proposte con un carattere ciascuna: la più armoniosa, una più elegante, una più audace.
+ * Elegante = formalità media più alta; audace = più colore e stacco di luce. Solo tra le non azzardate
+ * e mai due volte lo stesso outfit; se manca un carattere si prende il prossimo dei `diversi`.
+ * Restituisce gli outfit con `carattere` ("armonioso" | "elegante" | "audace" | null).
+ */
+export function tre(outfit) {
+  const ordine = diversi(outfit);
+  if (!ordine.length) return [];
+  const [primo] = ordine;
+  // un carattere vero cambia almeno un pezzo grande, non solo la cintura
+  const buoni = ordine.filter((o) => o.punteggio >= 0.55 && simile(o, primo) < 0.75);
+  const formale = (o) => o.pezzi.reduce((s, p) => s + (p.formalita[0] + p.formalita[1]) / 2, 0) / o.pezzi.length;
+  const ardito = (o) => Math.max(...o.pezzi.map((p) => p.lch.C)) + (Math.max(...o.pezzi.map((p) => p.lch.L)) - Math.min(...o.pezzi.map((p) => p.lch.L))) / 2;
+  const migliore = (lista, f, soglia) => lista.filter((o) => f(o) > soglia).sort((a, b) => f(b) - f(a) || b.punteggio - a.punteggio)[0];
+  const elegante = migliore(buoni, formale, formale(primo));
+  const audace = migliore(buoni.filter((o) => !elegante || simile(o, elegante) < 0.75), ardito, ardito(primo));
+  const scelti = [{ ...primo, carattere: "armonioso" }];
+  for (const [o, c] of [[elegante, "elegante"], [audace, "audace"]]) if (o) scelti.push({ ...o, carattere: c });
+  for (const o of ordine) if (scelti.length < 3 && !scelti.some((x) => x.pezzi === o.pezzi)) scelti.push({ ...o, carattere: null });
+  return [...scelti, ...ordine.filter((o) => !scelti.some((x) => x.pezzi === o.pezzi))];
 }
 
 /** Un outfit già fatto (es. un preferito) con voto, pelle e motivi, come quelli proposti. */
