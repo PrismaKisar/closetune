@@ -633,3 +633,11 @@ html:has(.picker[open]) { overflow: hidden; }
   .dettagli-capo[open] > summary::after { content: "–"; }
   .dettagli-capo .info { border-top: 0; margin-top: 0; }
 }
+
+/* "Oggi vado a…" in Oggi e Componi */
+.uscita { display: flex; align-items: center; gap: 8px 14px; flex-wrap: wrap; margin: 0 0 20px; }
+.uscita > span { color: var(--muted); font-size: 14px; }
+@media (max-width: 600px) {
+  .uscita .seg { width: 100%; }
+  .uscita .seg button { flex: 1; padding-inline: 6px; font-size: 13px; }
+}

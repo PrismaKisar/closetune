@@ -280,6 +280,15 @@ const stagioneComune = (pezzi) =>
 export const staBene = (fissi, c) =>
   fissi.every((f) => sovrapponeStagione(f, c)) && distanzaFormale([...fissi, c]) <= 1 && !gusto([...fissi, c]).vietato;
 
+// "Oggi vado a…": un outfit entra se ogni capo ha quell'occasione (i capi versatili stanno in più liste)
+export const USCITE = [["casual", "Tempo libero"], ["smart-casual", "Università / lavoro"], ["elegante", "Serata elegante"]];
+export const perOccasione = (pool, occ, fissi = []) => pool.filter((c) => fissi.includes(c) || c.occasione.includes(occ));
+// strati senza cui l'outfit non si fa: pantaloni, scarpe e almeno un capo sopra
+export const mancaPer = (pool, occ) => {
+  const ok = perOccasione(pool, occ);
+  const ha = (s) => ok.some((c) => c.slot === s);
+  return [...(ha("base") || ha("mid") ? [] : ["base"]), ...["bottom", "shoes"].filter((s) => !ha(s))];
+};
 export const NOMI_SLOT = { base: "t-shirt, polo o camicia", mid: "felpa, pile o maglione", bottom: "pantaloni", shoes: "scarpe", belt: "cintura" };
 
 /** Gli outfit attorno al capo scelto, presi da `pool` (già filtrato per stato): tutte le combinazioni

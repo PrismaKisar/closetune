@@ -1,4 +1,4 @@
-import { diversi, staBene, FAMIGLIE, NOMI_SLOT, TIPI, titoloOutfit, delGiorno, faccette, filtra, giudizio, giudizioPelle, impostaPelle, ordineArcobaleno, outfit, outfitDa, percentuale, prepara, taraSuApprovati, valuta, alternative } from "./abbinamenti.js";
+import { USCITE, perOccasione, mancaPer, diversi, staBene, FAMIGLIE, NOMI_SLOT, TIPI, titoloOutfit, delGiorno, faccette, filtra, giudizio, giudizioPelle, impostaPelle, ordineArcobaleno, outfit, outfitDa, percentuale, prepara, taraSuApprovati, valuta, alternative } from "./abbinamenti.js";
 
 const STAGIONI = ["primavera", "estate", "autunno", "inverno"];
 const OCCASIONI = ["casual", "smart-casual", "elegante", "sportivo", "outdoor"];
@@ -13,7 +13,20 @@ const st = {
   f: { stato: "attivo", tipi: [], famiglie: [], stagioni: [], occasioni: [], testo: "" },
   pool: "attivo",
   giro: 0, // "Un altro" nell'outfit di oggi
+  uscita: localStorage.getItem("closetune-uscita") ?? "casual", // "Oggi vado a…"
 };
+
+function sceltaUscita() {
+  return `<div class="uscita"><span id="uscita-titolo">Oggi vado a…</span>
+    <div class="seg" role="group" aria-labelledby="uscita-titolo">${USCITE.map(([v, t]) => `<button type="button" data-uscita="${v}" aria-pressed="${st.uscita === v}">${t}</button>`).join("")}</div></div>`;
+}
+// null se l'occasione si può vestire, altrimenti l'avviso con cosa manca
+function avvisoUscita(pool) {
+  const manca = mancaPer(pool, st.uscita);
+  if (!manca.length) return null;
+  const nome = USCITE.find(([v]) => v === st.uscita)[1].toLowerCase();
+  return `<p class="avviso">Per ${esc(nome)} ti mancano: <b>${esc(manca.map((s) => NOMI_SLOT[s]).join(", "))}</b>. Fotografa e censisci quei capi e compariranno qui.</p>`;
+}
 const $ = (s, el = document) => el.querySelector(s);
 const main = $("#contenuto");
 const esc = (s = "") => String(s).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
@@ -293,7 +306,9 @@ function vistaOggi() {
   const oggi = new Date();
   const citta = localStorage.getItem(CITTA) ?? "";
   const meteo = st.meteo?.citta === citta && !st.meteo.errore ? st.meteo : null;
-  let { stagione, scelto, outfit: o, adatti } = delGiorno(filtra(st.capi, { stato: "attivo" }), oggi, st.giro, st.approvati, meteo);
+  const attivi = filtra(st.capi, { stato: "attivo" });
+  const manca = avvisoUscita(attivi);
+  let { stagione, scelto, outfit: o, adatti } = manca ? { stagione: delGiorno(attivi, oggi).stagione } : delGiorno(perOccasione(attivi, st.uscita), oggi, st.giro, st.approvati, meteo);
   // pezzi cambiati a mano: gli altri restano fermi
   const cambiati = st.oggiPezzi?.map((id) => st.capi.find((c) => c.id === id)).filter(Boolean);
   if (o && cambiati?.length) {
@@ -315,8 +330,9 @@ function vistaOggi() {
         <button type="button" class="btn" id="rimescola">Un altro</button>
       </div>
     </div>
+    ${sceltaUscita()}
     ${o && st.cambiaSlot ? sceltaAlternative(o, st.cambiaSlot, adatti) : ""}
-    ${o ? schedaOutfit(o, st.giro, scelto, st.giro, [], true) : `<p class="avviso">Nessun capo attivo adatto all'${esc(stagione)}.</p>`}
+    ${manca ?? (o ? schedaOutfit(o, st.giro, scelto, st.giro, [], true) : `<p class="avviso">Nessun capo attivo adatto all'${esc(stagione)}.</p>`)}
   </div>`;
 }
 
@@ -389,6 +405,7 @@ function vistaCrea() {
   main.innerHTML = `<div class="oggi crea">
     <div class="oggi-testa"><div><p class="marca">Fissa i capi che vuoi · il resto lo scelgo io</p><h1>Componi</h1></div>
       <button type="button" class="btn" id="svuota"${fissi.length ? "" : " hidden"}>Ricomincia</button></div>
+    ${sceltaUscita()}
     <ul class="slot-crea" aria-label="Il tuo outfit">${SLOT_CREA.map((s) => slotCrea(s, fissi.find((f) => f.slot === s))).join("")}</ul>
     <div id="risultati-crea"></div>
     <dialog class="picker" id="picker" aria-labelledby="picker-titolo"></dialog>
@@ -424,9 +441,14 @@ function risultatiCrea() {
   const fissi = fissiDaHash();
   const box = $("#risultati-crea");
   if (!fissi.length) { box.innerHTML = `<p class="avviso">Tocca una casella e scegli almeno un capo: il resto lo completo io, dal migliore.</p>`; return; }
-  const { outfit: proposti, mancanti, vietato } = outfitDa(fissi, filtra(st.capi, { stato: "attivo" }), { approvati: st.approvati });
+  const attivi = filtra(st.capi, { stato: "attivo" });
+  const manca = avvisoUscita(attivi);
+  if (manca) { box.innerHTML = manca; return; }
+  const { outfit: proposti, mancanti, vietato } = outfitDa(fissi, perOccasione(attivi, st.uscita, fissi), { approvati: st.approvati });
   if (vietato) { box.innerHTML = `<p class="avviso">${esc(vietato)} Togli uno dei due capi.</p>`; return; }
-  box.innerHTML = `${mancanti.length ? `<p class="avviso">Nessun capo adatto tra: <b>${esc(mancanti.map((s) => NOMI_SLOT[s]).join(", "))}</b>.</p>` : ""}
+  // senza capo sotto (es. dolcevita) l'outfit si fa lo stesso: avviso solo se manca davvero qualcosa
+  const manchi = proposti.length ? mancanti.filter((s) => s !== "base") : mancanti;
+  box.innerHTML = `${manchi.length ? `<p class="avviso">Nessun capo adatto tra: <b>${esc(manchi.map((s) => NOMI_SLOT[s]).join(", "))}</b>.</p>` : ""}
     <p class="n-abb" aria-live="polite">${proposti.length ? contaOutfit(proposti.length) : "Questi capi non stanno insieme: stagione, formalità o stile troppo diversi."}</p>
     <div id="lista-outfit"></div>
     <button type="button" class="btn altri" id="altri" hidden></button>`;
@@ -516,6 +538,13 @@ document.addEventListener("click", (e) => {
   else if (t.dataset.chiudiPicker !== undefined) $("#picker").close();
   else if (t.dataset.approva) approva(t);
   else if (t.id === "svuota") { history.replaceState(null, "", "#crea"); vistaCrea(); }
+  else if (t.dataset.uscita) {
+    st.uscita = t.dataset.uscita;
+    localStorage.setItem("closetune-uscita", st.uscita);
+    document.querySelectorAll("[data-uscita]").forEach((b) => b.setAttribute("aria-pressed", b === t));
+    st.giro = 0; st.oggiPezzi = st.cambiaSlot = null;
+    if (location.hash === "#oggi") { vistaOggi(); $(`[data-uscita="${st.uscita}"]`).focus(); } else risultatiCrea();
+  }
   else if (t.id === "rimescola") { st.giro++; st.oggiPezzi = st.cambiaSlot = null; vistaOggi(); }
   else if (t.dataset.cambia) {
     st.cambiaSlot = st.cambiaSlot === t.dataset.cambia ? null : t.dataset.cambia;
