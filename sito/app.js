@@ -56,9 +56,11 @@ const SAGOME = {
 const sagoma = (s) => `<svg class="sagoma" viewBox="0 0 64 64" aria-hidden="true"><path d="${SAGOME[s] ?? SAGOME.base}"/>${s === "belt" ? '<rect class="fibbia" x="40" y="24" width="10" height="16" rx="2"/>' : ""}</svg>`;
 
 // tipo prima, poi colore, la marca per ultima; pos = posto nell'ordine per colore
-function carta(c, pos) {
-  return `<li class="carta">${c.stato === "attivo" ? `<a class="carta-componi" href="#crea/${esc(c.id)}" aria-label="Crea un look con ${esc(nomeCapo(c))}">${GRUCCIA}<span>Crea un look</span></a>` : ""}<a class="capo${c.stato !== "attivo" ? " spento" : ""}" href="#capo/${esc(c.id)}">
-    <div class="cornice">${visuale(c)}${pos ? `<span class="pos">${pos}</span>` : ""}</div>
+// pos: numero nella sequenza dell'armadio, da spuntare quando il capo è appeso
+function carta(c, pos, appeso = false) {
+  const segno = pos ? `<button type="button" class="pos" data-appeso="${esc(c.id)}" aria-pressed="${appeso}" aria-label="${pos}. ${esc(nomeCapo(c))}: ${appeso ? "appeso" : "segna come appeso"}">${appeso ? SPUNTA : pos}</button>` : "";
+  return `<li class="carta${appeso ? " appeso" : ""}">${segno}${c.stato === "attivo" ? `<a class="carta-componi" href="#crea/${esc(c.id)}" aria-label="Crea un look con ${esc(nomeCapo(c))}">${GRUCCIA}<span>Crea un look</span></a>` : ""}<a class="capo${c.stato !== "attivo" ? " spento" : ""}" href="#capo/${esc(c.id)}">
+    <div class="cornice">${visuale(c)}</div>
     <div class="capo-testo">
       <span class="nome">${esc(cap(c.categoria))}</span>
       <span class="colore"><i style="--c:${esc(c.hex)}"></i>${esc(c.nomeColore)}${c.stato !== "attivo" ? ` <em>${ETICHETTA_STATO[c.stato] ?? esc(c.stato)}</em>` : ""}</span>
@@ -83,7 +85,7 @@ function vistaArmadio() {
       <button type="button" class="btn mostra" id="mostra" data-chiudi></button>
     </aside>
     <section class="vetrina" aria-labelledby="titolo-vetrina">
-      <div class="vetrina-testa"><h1 id="titolo-vetrina">Il mio armadio</h1><p id="n-risultati" aria-live="polite"></p><a class="btn-arcobaleno" href="#arcobaleno"><i aria-hidden="true"></i>Organizza per colore</a></div>
+      <div class="vetrina-testa"><h1 id="titolo-vetrina">Il mio armadio</h1><p id="n-risultati" aria-live="polite"></p><a class="btn-arcobaleno" href="#arcobaleno"><i aria-hidden="true"></i>Ordine nell'armadio</a></div>
       <div class="tipi-rapidi" id="f-tipi" role="group" aria-label="Tipo di capo"></div>
       <div class="attivi" id="attivi" role="group" aria-label="Filtri attivi"></div>
       <ul class="griglia" id="griglia"></ul>
@@ -189,7 +191,10 @@ function schedaOutfit(o, { i = 0, scelto = o.pezzi[0], fissi = [scelto], oggi = 
   const g = giudizio(o.punteggio);
   const gp = o.pelle !== undefined ? giudizioPelle(o.pelle) : null;
   // in sintesi il motivo principale (il meteo ha la sua riga in testa alla pagina)
-  const sintesi = o.perche.find((m) => m.tipo !== "meteo");
+  // le proposte con un carattere dicono cosa cambia rispetto alla prima, non la stessa formula
+  const sintesi = o.cambia?.length
+    ? { testo: `Rispetto alla prima: ${o.cambia.map((p) => `${p.categoria} ${p.nomeColore}`).join(", ")}, ${o.carattere === "elegante" ? "per un tono più formale" : "per più colore e contrasto"}.` }
+    : o.perche.find((m) => m.tipo !== "meteo");
   // nella composizione: strato sopra e pantaloni grandi, il resto piccolo; senza strato la base prende il suo posto
   const area = (p) => (p.slot === "base" && !pezzi.some((x) => x.slot === "mid") ? "mid" : p.slot);
   const h = `h${livello}`;
@@ -447,13 +452,20 @@ document.addEventListener("submit", (e) => {
   vistaOggi();
 });
 
+// checklist dei capi già appesi (solo su questo dispositivo)
+const APPESI = "closetune-appesi";
+const appesi = () => JSON.parse(localStorage.getItem(APPESI) || "[]");
+
 function vistaArcobaleno() {
   const capi = ordineArcobaleno(st.capi);
+  const fatti = appesi().filter((id) => capi.some((c) => c.id === id));
   main.innerHTML = `<div class="oggi arcobaleno">
     <a class="indietro" href="#armadio">Tutti i capi</a>
-    <div class="oggi-testa"><div><p class="marca">${capi.length} capi sopra · da appendere in quest'ordine</p><h1>Organizza per colore</h1></div></div>
-    <ol class="sequenza" aria-label="La sequenza, da sinistra a destra">${capi.map((c, i) => `<li style="--c:${esc(c.hex)}" title="${i + 1}. ${esc(nomeCapo(c))}"><span>${i + 1}</span></li>`).join("")}</ol>
-    <ol class="griglia">${capi.map((c, i) => carta(c, i + 1)).join("")}</ol>
+    <div class="oggi-testa"><div><p class="marca">${capi.length} capi sopra · da appendere in quest'ordine</p><h1>Ordine nell'armadio</h1>
+      <p class="sottotitolo">Appendi da sinistra a destra e tocca il numero di ogni capo appeso: ti tengo il segno.</p></div>
+      <div class="oggi-azioni"><p class="conta-appesi" role="status">${fatti.length} di ${capi.length} appesi</p>${fatti.length ? `<button type="button" class="btn" id="ricomincia-appesi">Ricomincia</button>` : ""}</div></div>
+    <ol class="sequenza" aria-label="La sequenza, da sinistra a destra">${capi.map((c, i) => `<li style="--c:${esc(c.hex)}" title="${i + 1}. ${esc(nomeCapo(c))}"${fatti.includes(c.id) ? ' class="fatto"' : ""}><span>${i + 1}</span></li>`).join("")}</ol>
+    <ol class="griglia">${capi.map((c, i) => carta(c, i + 1, fatti.includes(c.id))).join("")}</ol>
   </div>`;
 }
 
@@ -497,7 +509,7 @@ function vistaCrea() {
     ${sceltaUscita()}
     <ul class="slot-crea" aria-label="Il tuo outfit">${SLOT_CREA.map((s) => slotCrea(s, fissi.find((f) => f.slot === s))).join("")}</ul>
     <div id="risultati-crea"></div>
-    <dialog class="picker" id="picker" aria-labelledby="picker-titolo"></dialog>
+    <dialog class="picker laterale" id="picker" aria-labelledby="picker-titolo"></dialog>
   </div>`;
   risultatiCrea();
 }
@@ -592,7 +604,7 @@ function render() {
     window.scrollTo(0, 0);
   } else if (arcobaleno) {
     vistaArcobaleno();
-    document.title = "Organizza per colore · closetune";
+    document.title = "Ordine nell'armadio · closetune";
     window.scrollTo(0, 0);
   } else if (c) {
     vistaDettaglio(c);
@@ -643,6 +655,16 @@ document.addEventListener("click", (e) => {
   }
   else if (t.dataset.chiudiPicker !== undefined) t.closest("dialog").close();
   else if (t.dataset.approva) approva(t);
+  else if (t.dataset.appeso || t.id === "ricomincia-appesi") {
+    const id = t.dataset.appeso;
+    const lista = id ? appesi() : [];
+    if (id) toggle(lista, id);
+    localStorage.setItem(APPESI, JSON.stringify(lista));
+    const y = window.scrollY;
+    vistaArcobaleno();
+    window.scrollTo(0, y);
+    $(id ? `[data-appeso="${id}"]` : ".indietro").focus({ preventScroll: true });
+  }
   else if (t.id === "svuota") { history.replaceState(null, "", "#crea"); vistaCrea(); }
   else if (t.dataset.uscita) {
     st.uscita = t.dataset.uscita;

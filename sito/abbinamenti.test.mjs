@@ -488,6 +488,18 @@ test("diversi: i primi n non si ripetono nei pezzi grandi, poi il resto dal migl
   assert.deepEqual(m.diversi(lista, 0).map((x) => x.punteggio), [0.9, 0.89, 0.88, 0.8, 0.7]);
 });
 
+test("perche: i neutri non ripetono lo stacco quando sono entrambi chiari", () => {
+  const tutte = ["primavera", "estate", "autunno", "inverno"];
+  const k = (id, categoria, hex, colore) => ({ id, categoria, hex, colore, stato: "attivo", stagione: tutte, occasione: ["casual"] });
+  const [panna, beige, nero] = m.prepara([k("p", "felpa", "#e6e6dc", "bianco panna"), k("b", "chino", "#bcae94", "beige"), k("n", "jeans", "#1e211e", "nero")]);
+  const chiaro = m.perche([panna, beige], panna).map((x) => x.testo).join(" ");
+  assert.doesNotMatch(chiaro, /chiaro e scuro/);
+  assert.match(chiaro, /contrasto morbido/);
+  const netto = m.perche([panna, nero], panna);
+  assert.match(netto[0].testo, /stacco netto tra chiaro e scuro/);
+  assert.ok(!netto.some((x) => x.tipo === "luce"), "la luce non si ripete in una seconda riga");
+});
+
 test("tre: la più armoniosa, una più elegante, una più audace, mai ripetute", () => {
   const tutte = ["primavera", "estate", "autunno", "inverno"];
   const k = (id, categoria, hex, occasione = ["casual"]) => ({ id, categoria, hex, colore: "x", stato: "attivo", stagione: tutte, occasione });
@@ -503,6 +515,8 @@ test("tre: la più armoniosa, una più elegante, una più audace, mai ripetute",
   assert.equal(r[0].pezzi, calmo.pezzi, "prima la più armoniosa");
   assert.equal(r[1].pezzi, formale.pezzi);
   assert.equal(r[2].pezzi, acceso.pezzi, "l'azzardata non è mai l'audace");
+  assert.deepEqual(r[1].cambia, [cam, chino, mocc], "l'elegante dice cosa cambia rispetto alla prima");
+  assert.deepEqual(r[2].cambia, [rossa]);
   assert.equal(r.length, 4, "nessun outfit perso");
   assert.equal(new Set(r.map((x) => x.pezzi)).size, 4);
   // senza un'alternativa più elegante, la seconda arriva dai diversi senza etichetta

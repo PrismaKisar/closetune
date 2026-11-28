@@ -25,7 +25,7 @@ export const distanzaTinta = (a, b) => {
 const SOGLIA_NEUTRO = 0.035;
 
 export const FAMIGLIE = [
-  ["chiari", "Bianchi e panna"], ["scuri", "Neri e scuri"], ["grigi", "Grigi"],
+  ["chiari", "Bianchi e chiari"], ["scuri", "Neri e scuri"], ["grigi", "Grigi"],
   ["terra", "Terra e beige"], ["gialli", "Gialli"], ["verdi", "Verdi"],
   ["blu", "Blu e azzurri"], ["rossi", "Rossi"], ["rosa", "Rosa e viola"],
 ];
@@ -392,7 +392,9 @@ export function tre(outfit) {
   const elegante = migliore(buoni, formale, formale(primo));
   const audace = migliore(buoni.filter((o) => !elegante || simile(o, elegante) < 0.75), ardito, ardito(primo));
   const scelti = [{ ...primo, carattere: "armonioso" }];
-  for (const [o, c] of [[elegante, "elegante"], [audace, "audace"]]) if (o) scelti.push({ ...o, carattere: c });
+  // cosa cambia rispetto alla prima: la spiegazione parla della differenza, non ripete la stessa formula
+  const cambia = (o) => o.pezzi.filter((p) => !primo.pezzi.includes(p));
+  for (const [o, c] of [[elegante, "elegante"], [audace, "audace"]]) if (o) scelti.push({ ...o, carattere: c, cambia: cambia(o) });
   for (const o of ordine) if (scelti.length < 3 && !scelti.some((x) => x.pezzi === o.pezzi)) scelti.push({ ...o, carattere: null });
   return [...scelti, ...ordine.filter((o) => !scelti.some((x) => x.pezzi === o.pezzi))];
 }
@@ -459,7 +461,8 @@ const FRASI = {
     const [col, neu] = a.neutro ? [b, a] : [a, b];
     return `Il ${col.nomeColore} è l'unico colore pieno: il ${neu.nomeColore} gli fa da cornice.`;
   },
-  neutri: (a, b) => `${cap(a.nomeColore)} e ${b.nomeColore} fanno entrambi da base neutra: stanno insieme grazie allo stacco tra chiaro e scuro.`,
+  // la luce è già nella frase: per i neutri non serve la riga "luce"
+  neutri: (a, b) => `${cap(a.nomeColore)} e ${b.nomeColore}, due neutri: ${Math.abs(a.lch.L - b.lch.L) >= 0.35 ? "li tiene insieme lo stacco netto tra chiaro e scuro" : "contrasto morbido, lo stacco lo danno scarpe e dettagli"}.`,
   monocromatico: (a, b) => `${cap(a.nomeColore)} e ${b.nomeColore} hanno quasi la stessa luce: effetto total look.`,
   "tono su tono": (a, b) => `${cap(a.nomeColore)} e ${b.nomeColore} sono la stessa tinta a intensità diverse: tono su tono.`,
   analoghi: (a, b) => `${cap(a.nomeColore)} e ${b.nomeColore} sono vicini sulla ruota: passaggio morbido, senza stacchi.`,
@@ -485,7 +488,7 @@ export function perche(pezzi, scelto, approvati = []) {
     const tipo = relazione(a, b);
     righe.push({ tipo, testo: FRASI[tipo](a, b) });
     const dL = Math.abs(a.lch.L - b.lch.L);
-    if (tipo !== "monocromatico")
+    if (tipo !== "monocromatico" && tipo !== "neutri")
       righe.push({
         tipo: "luce",
         testo: dL >= 0.35 ? "Forte stacco chiaro/scuro tra sopra e sotto." : dL >= 0.15 ? "Contrasto di luce moderato tra sopra e sotto." : "Sopra e sotto hanno luce simile: lo stacco lo danno scarpe e cintura.",

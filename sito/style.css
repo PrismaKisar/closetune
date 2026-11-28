@@ -159,8 +159,8 @@ h1, h2, h3 { margin: 0; font-weight: 400; }
 .cornice { position: relative; aspect-ratio: 1; overflow: hidden; border-radius: var(--r); background: var(--frame); }
 .cornice img { width: 100%; height: 100%; object-fit: contain; filter: brightness(var(--scura)); transition: transform .5s var(--ease); }
 .cornice img.grezza { object-fit: cover; }
-/* posto nell'ordine per colore (vista "Organizza per colore") */
-.cornice .pos { position: absolute; top: 8px; left: 8px; min-width: 28px; height: 28px; padding: 0 8px; display: grid; place-items: center; border-radius: 999px; background: var(--surface); box-shadow: 0 1px 3px rgb(40 30 20 / .15); font: 600 13px/1 var(--sans); font-variant-numeric: tabular-nums; }
+/* posto nella sequenza (vista "Ordine nell'armadio") */
+.carta > .pos { z-index: 1; border: 0; cursor: pointer; color: var(--ink); position: absolute; top: 8px; left: 8px; min-width: 28px; height: 28px; padding: 0 8px; display: grid; place-items: center; border-radius: 999px; background: var(--surface); box-shadow: 0 1px 3px rgb(40 30 20 / .15); font: 600 13px/1 var(--sans); font-variant-numeric: tabular-nums; }
 .capo:hover .cornice img, .pezzo:hover .cornice img { transform: scale(1.03); }
 .capo:hover .cornice { box-shadow: 0 10px 28px -18px rgb(40 30 20 / .45); }
 .cornice { transition: box-shadow .3s var(--ease); }
@@ -437,7 +437,7 @@ h1, h2, h3 { margin: 0; font-weight: 400; }
   .arcobaleno .griglia { grid-template-columns: repeat(3, 1fr); gap: 14px 8px; }
   .arcobaleno .capo-testo .colore, .arcobaleno .capo-testo .marca-capo { display: none; }
   .arcobaleno .capo-testo .nome { font-size: 13px; }
-  .arcobaleno .cornice .pos { top: 5px; left: 5px; min-width: 24px; height: 24px; padding: 0 6px; font-size: 12px; }
+  .arcobaleno .carta > .pos { top: 5px; left: 5px; min-width: 24px; height: 24px; padding: 0 6px; font-size: 12px; }
 }
 
 /* ---------- outfit builder ---------- */
@@ -741,3 +741,12 @@ h2.n-abb { font: 400 14px/1.4 var(--sans); }
   .slot-tag span { display: none; }
   .slot-tag:not(.fisso) { display: none; }
 }
+
+/* ordine nell'armadio: il numero è la casella da spuntare (44px di tocco grazie al margine invisibile) */
+.carta > .pos::after { content: ""; position: absolute; inset: -8px; }
+.carta > .pos svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+.carta > .pos[aria-pressed="true"] { background: #3f6b45; color: #fff; }
+.carta.appeso .capo { opacity: .45; }
+.sequenza li.fatto { opacity: .3; }
+.conta-appesi { margin: 0; color: var(--muted); font-size: 14px; font-variant-numeric: tabular-nums; }
+.arcobaleno .carta-componi { display: none; } /* qui si appende, non si abbina */
