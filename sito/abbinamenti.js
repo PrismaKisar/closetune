@@ -633,3 +633,86 @@ export function ordineArcobaleno(capi) {
     .sort(([a], [b]) => a[0] - b[0] || a[1] - b[1])
     .map(([, c]) => c);
 }
+
+// ---------- il prossimo capo ----------
+// L'armadio come spazio: tipo di capo × colore. Ogni posto vuoto è un capo "virtuale"; vale quanti
+// outfit buoni nuovi sblocca con ciò che hai, purché stia bene alla tua pelle e non ce l'abbia già.
+const TINTE = {
+  bianco: "#f0f0ea", panna: "#e6e0cc", "grigio chiaro": "#b9bab6", antracite: "#4a4c4f", nero: "#1d1e1f",
+  navy: "#1f2a44", "blu medio": "#3d5a80", azzurro: "#a9c3dc", sabbia: "#cbbd9e", cammello: "#b08a5a",
+  cuoio: "#8b5a33", "marrone scuro": "#4a3426", oliva: "#5f6340", "verde bosco": "#2f4a3a", bordeaux: "#6b2632",
+  ruggine: "#9a4a2a", senape: "#c99a2e", petrolio: "#24505a", salvia: "#9caf98", "denim scuro": "#2b3a4e", "denim medio": "#4f6a86",
+};
+const OGNI = Object.keys(TINTE).filter((k) => !k.startsWith("denim"));
+const TUTTE = ["primavera", "estate", "autunno", "inverno"];
+export const ARCHETIPI = [
+  { chiave: "tshirt", nome: "T-shirt", categoria: "t-shirt", modello: "tinta unita", materiale: "cotone", occasione: ["casual"], stagione: ["primavera", "estate"], colori: OGNI },
+  { chiave: "polo", nome: "Polo", categoria: "polo", modello: "piqué manica corta", materiale: "cotone", occasione: ["casual", "smart-casual"], stagione: ["primavera", "estate"], colori: OGNI },
+  { chiave: "oxford", nome: "Camicia oxford", categoria: "camicia", modello: "oxford button-down", materiale: "cotone", occasione: ["casual", "smart-casual"], stagione: TUTTE, colori: ["bianco", "azzurro", "panna", "salvia", "navy", "sabbia", "grigio chiaro", "oliva"] },
+  { chiave: "maglione", nome: "Maglione girocollo", categoria: "maglione", modello: "girocollo", materiale: "lana merino", occasione: ["casual", "smart-casual"], stagione: ["autunno", "inverno"], colori: OGNI },
+  { chiave: "felpa", nome: "Felpa girocollo", categoria: "felpa", modello: "girocollo tinta unita", materiale: "cotone", occasione: ["casual"], stagione: ["primavera", "autunno", "inverno"], colori: OGNI },
+  { chiave: "giacca", nome: "Giacca leggera", categoria: "giacca", modello: "overshirt", materiale: "cotone", occasione: ["casual", "smart-casual"], stagione: ["primavera", "autunno"], colori: OGNI },
+  { chiave: "chino", nome: "Chino", categoria: "pantalone", modello: "chino", materiale: "cotone", occasione: ["casual", "smart-casual"], stagione: TUTTE, colori: ["navy", "sabbia", "oliva", "grigio chiaro", "antracite", "cammello", "nero", "marrone scuro", "panna", "verde bosco", "bordeaux", "ruggine"] },
+  { chiave: "jeans", nome: "Jeans", categoria: "jeans", modello: "5 tasche", materiale: "denim", occasione: ["casual"], stagione: TUTTE, colori: ["denim scuro", "denim medio", "nero", "grigio chiaro", "antracite", "panna"] },
+  { chiave: "sneaker", nome: "Sneaker in pelle", categoria: "sneaker", modello: "minimal", materiale: "pelle", occasione: ["casual", "smart-casual"], stagione: TUTTE, colori: ["bianco", "nero", "panna", "grigio chiaro", "navy", "cuoio", "marrone scuro", "sabbia", "verde bosco", "bordeaux"] },
+  { chiave: "tela", nome: "Sneaker in tela", categoria: "sneaker", modello: "in tela basse", materiale: "tela", occasione: ["casual"], stagione: ["primavera", "estate", "autunno"], colori: ["bianco", "panna", "navy", "nero", "verde bosco", "bordeaux"] },
+  { chiave: "chelsea", nome: "Chelsea in camoscio", categoria: "stivaletto", modello: "chelsea", materiale: "camoscio", occasione: ["casual", "smart-casual"], stagione: ["primavera", "autunno", "inverno"], colori: ["marrone scuro", "cuoio", "sabbia", "nero", "antracite"] },
+  { chiave: "derby", nome: "Derby in pelle", categoria: "scarpe", modello: "derby", materiale: "pelle", occasione: ["smart-casual", "elegante"], stagione: TUTTE, colori: ["marrone scuro", "cuoio", "nero", "bordeaux"] },
+  { chiave: "mocassino", nome: "Mocassini in pelle", categoria: "mocassino", modello: "penny loafer", materiale: "pelle", occasione: ["smart-casual", "elegante"], stagione: TUTTE, colori: ["cuoio", "marrone scuro", "nero", "bordeaux", "sabbia"] },
+];
+// ponytail: niente cinture tra i suggerimenti, ne hai 15 e cambiano l'outfit appena; aggiungerle se ne mancano
+
+// generatore deterministico (stessi dati, stessi suggerimenti)
+const lcg = (seme) => () => (seme = (seme * 1664525 + 1013904223) >>> 0) / 2 ** 32;
+
+/** Il prossimo capo da comprare: per ogni tipo i colori che sbloccano più outfit nuovi, dal migliore.
+ * Stima: compagni compatibili per strato moltiplicati tra loro, poi `campioni` outfit a caso tra quelli
+ * per vedere quanti reggono davvero (punteggio ≥ 0.8). Esclusi i colori che ti spengono e quelli che hai già. */
+export function prossimi(capi, { quanti = 4, campioni = 160, approvati = [], strato = null } = {}) {
+  const pool = capi.filter((c) => c.stato === "attivo");
+  const stime = [];
+  for (const a of ARCHETIPI) {
+    if (strato && slot(a.categoria) !== strato) continue;
+    const { colori, chiave, nome, ...campi } = a;
+    for (const colore of colori) {
+      const [v] = prepara([{ ...campi, id: `nuovo-${chiave}-${colore.replace(/ /g, "-")}`, stato: "attivo", nuovo: true, colore, hex: TINTE[colore] }]);
+      const pelle = viso(v);
+      if (pelle && pelle.voto < 0.55) continue;
+      const simili = pool.filter((c) => c.tipo === v.tipo);
+      const vicino = Math.min(1, ...simili.map((c) => distanzaOk(c.lch, v.lch)));
+      if (vicino < 0.06) continue; // ce l'hai già
+      const compagni = {};
+      for (const s of ["base", "mid", "bottom", "shoes"].filter((s) => s !== v.slot))
+        compagni[s] = pool.filter((c) => c.slot === s && staBene([v], c) && coppia(v, c).punteggio >= 0.7);
+      const liste = Object.entries(compagni).map(([s, l]) => (s === "mid" ? [...l, null] : l));
+      const stima = liste.reduce((p, l) => p * l.length, 1);
+      if (!stima) continue;
+      stime.push({ capo: v, archetipo: chiave, nome: `${nome} ${colore}`, pelle, vicino, compagni, liste, stima, valore: stima * Math.min(1, vicino / 0.15) });
+    }
+  }
+  // la verifica a campione solo sui più promettenti
+  stime.sort((a, b) => b.valore - a.valore);
+  const verificati = stime.slice(0, 40).map((x) => {
+    const r = lcg(x.capo.id.length * 7919 + Math.round(x.capo.lch.h));
+    let buoni = 0;
+    for (let i = 0; i < campioni; i++) {
+      const pezzi = [x.capo, ...x.liste.map((l) => l[Math.floor(r() * l.length)]).filter(Boolean)];
+      if ((pezzi.some((p) => p.slot === "mid") || senzaStrato(pezzi)) && stagioneComune(pezzi) && punteggioOutfit(pezzi, approvati) >= 0.8) buoni++;
+    }
+    const nuovi = Math.round((x.stima * buoni) / campioni);
+    return { ...x, nuovi, valore: nuovi * Math.min(1, x.vicino / 0.15) };
+  }).filter((x) => x.nuovi > 0).sort((a, b) => b.valore - a.valore);
+  // tutto: un suggerimento per tipo, con gli altri colori buoni come alternative;
+  // uno strato: la classifica dei singoli capi, al massimo 3 colori per tipo per non vedere solo sneaker
+  const perTipo = new Map();
+  for (const x of verificati) perTipo.has(x.archetipo) ? perTipo.get(x.archetipo).alternative.push(x) : perTipo.set(x.archetipo, { ...x, alternative: [] });
+  const conta = {};
+  const scelti = strato
+    ? verificati.filter((x, i) => !verificati.slice(0, i).some((y) => y.capo.categoria === x.capo.categoria && y.capo.colore === x.capo.colore) && (conta[x.archetipo] = (conta[x.archetipo] ?? 0) + 1) <= 3).map((x) => ({ ...x, alternative: [] }))
+    : [...perTipo.values()];
+  return scelti.slice(0, quanti).map(({ liste, ...x }) => {
+    const esempi = outfitDa([x.capo], pool, { n: 2, approvati }).outfit;
+    return { ...x, alternative: x.alternative.slice(0, 3).map(({ capo, nome, nuovi }) => ({ capo, nome, nuovi })), esempi,
+      compagni: Object.fromEntries(Object.entries(x.compagni).map(([s, l]) => [s, l.length])) };
+  });
+}

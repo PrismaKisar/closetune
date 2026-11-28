@@ -634,3 +634,44 @@ test("meteo: pioggia, neve e sole cambiano scarpe, pantaloni e colori", () => {
   }
   assert.ok([0, 1, 2, 3, 4, 5].some((g) => ids({ min: 24, max: 32, pioggia: 0, cielo: "sereno" }, g).includes("l")), "sole: il lino esce");
 });
+
+test("prossimi: suggerisce i posti vuoti che sbloccano outfit, non ciò che hai già né i colori che spengono", () => {
+  const armadio = m.prepara([
+    capo("t1", "t-shirt", "#f0f0ea", { colore: "bianco" }), capo("t2", "t-shirt", "#1f2a44", { colore: "navy" }),
+    capo("m1", "maglione", "#e6e0cc", { colore: "panna", stagione: ["autunno", "inverno"] }),
+    capo("p1", "jeans", "#2b3a4e", { colore: "denim scuro" }), capo("p2", "pantalone", "#cbbd9e", { colore: "sabbia", modello: "chino" }),
+    capo("s1", "sneaker", "#f0f0ea", { colore: "bianco", materiale: "pelle" }),
+  ]);
+  const r = m.prossimi(armadio, { quanti: 10 });
+  assert.ok(r.length >= 3);
+  assert.ok(r.every((x) => x.nuovi > 0 && x.capo.nuovo && x.esempi.length));
+  // un suggerimento per tipo, dal più utile
+  assert.equal(new Set(r.map((x) => x.archetipo)).size, r.length);
+  assert.ok(r.every((x, i) => i === 0 || r[i - 1].valore >= x.valore));
+  // niente doppioni: i jeans denim scuro e le sneaker bianche ce li hai
+  assert.ok(!r.some((x) => /jeans denim scuro|sneaker in pelle bianco/i.test(x.nome)));
+  assert.ok(r.flatMap((x) => [x, ...x.alternative]).every((x) => !/^(Jeans denim scuro|Sneaker in pelle bianco)$/.test(x.nome)));
+  // vicino al viso solo colori che non ti spengono
+  assert.ok(r.every((x) => !x.pelle || x.pelle.voto >= 0.55));
+  // con un solo paio di scarpe, un paio nuovo moltiplica tutto: è tra i primi due
+  assert.ok(r.slice(0, 2).some((x) => x.capo.slot === "shoes"));
+  // deterministico
+  assert.deepEqual(m.prossimi(armadio, { quanti: 10 }).map((x) => [x.nome, x.nuovi]), r.map((x) => [x.nome, x.nuovi]));
+});
+
+test("prossimi per strato: solo capi di quello strato, più colori, al massimo 3 per tipo", () => {
+  const armadio = m.prepara([
+    capo("t1", "t-shirt", "#f0f0ea", { colore: "bianco" }), capo("t2", "t-shirt", "#1f2a44", { colore: "navy" }),
+    capo("m1", "maglione", "#e6e0cc", { colore: "panna", stagione: ["autunno", "inverno"] }),
+    capo("p1", "jeans", "#2b3a4e", { colore: "denim scuro" }), capo("p2", "pantalone", "#cbbd9e", { colore: "sabbia", modello: "chino" }),
+    capo("s1", "sneaker", "#f0f0ea", { colore: "bianco", materiale: "pelle" }),
+  ]);
+  const r = m.prossimi(armadio, { strato: "shoes", quanti: 8 });
+  assert.ok(r.length > 4);
+  assert.ok(r.every((x) => x.capo.slot === "shoes" && !x.alternative.length));
+  assert.ok(new Set(r.map((x) => x.archetipo)).size >= 2);
+  const per = {}; for (const x of r) per[x.archetipo] = (per[x.archetipo] ?? 0) + 1;
+  assert.ok(Object.values(per).every((n) => n <= 3));
+  // stessa categoria e stesso colore (pelle o tela) non si ripete
+  assert.equal(new Set(r.map((x) => x.capo.categoria + x.capo.colore)).size, r.length);
+});

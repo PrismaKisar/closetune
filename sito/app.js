@@ -1,4 +1,4 @@
-import { USCITE, perOccasione, vaPer, mancaPer, tre, staBene, FAMIGLIE, NOMI_SLOT, TIPI, titoloOutfit, delGiorno, effetto, cielo, faccette, filtra, giudizio, giudizioPelle, impostaPelle, ordineArcobaleno, outfit, outfitDa, percentuale, prepara, taraSuApprovati, valuta, alternative } from "./abbinamenti.js";
+import { prossimi, USCITE, perOccasione, vaPer, mancaPer, tre, staBene, FAMIGLIE, NOMI_SLOT, TIPI, titoloOutfit, delGiorno, effetto, cielo, faccette, filtra, giudizio, giudizioPelle, impostaPelle, ordineArcobaleno, outfit, outfitDa, percentuale, prepara, taraSuApprovati, valuta, alternative } from "./abbinamenti.js";
 
 const STAGIONI = ["primavera", "estate", "autunno", "inverno"];
 const OCCASIONI = ["casual", "smart-casual", "elegante", "sportivo", "outdoor"];
@@ -43,7 +43,7 @@ function visuale(c, grande = false) {
   // multicolore: il dominante pieno, i secondari in fasce sul fondo
   const sec = (c.hex_secondari || []).filter((h) => /^#[0-9a-f]{6}$/i.test(h));
   const fasce = sec.length ? `;--fasce:linear-gradient(${sec.map((h, i) => `${h} ${(i * 100) / sec.length}% ${((i + 1) * 100) / sec.length}%`).join(",")})` : "";
-  return `<div class="campione${sec.length ? " multi" : ""}" style="--c:${esc(c.hex)}${fasce}" role="img" aria-label="${esc(cap(c.categoria))} ${esc(c.colore)}, senza foto">${sagoma(c.slot)}<span>foto mancante</span></div>`;
+  return `<div class="campione${sec.length ? " multi" : ""}" style="--c:${esc(c.hex)}${fasce}" role="img" aria-label="${esc(cap(c.categoria))} ${esc(c.colore)}, ${c.nuovo ? "da comprare" : "senza foto"}">${sagoma(c.slot)}${c.nuovo ? "" : "<span>foto mancante</span>"}</div>`;
 }
 // senza foto: la sagoma del tipo di capo nel suo colore
 const SAGOME = {
@@ -85,7 +85,7 @@ function vistaArmadio() {
       <button type="button" class="btn mostra" id="mostra" data-chiudi></button>
     </aside>
     <section class="vetrina" aria-labelledby="titolo-vetrina">
-      <div class="vetrina-testa"><h1 id="titolo-vetrina">Il mio armadio</h1><p id="n-risultati" aria-live="polite"></p><a class="btn-arcobaleno" href="#arcobaleno"><i aria-hidden="true"></i>Ordine nell'armadio</a></div>
+      <div class="vetrina-testa"><h1 id="titolo-vetrina">Il mio armadio</h1><p id="n-risultati" aria-live="polite"></p><a class="btn-arcobaleno btn-prossimo" href="#prossimo"><i aria-hidden="true"></i>Cosa comprare</a><a class="btn-arcobaleno" href="#arcobaleno"><i aria-hidden="true"></i>Ordine nell'armadio</a></div>
       <div class="tipi-rapidi" id="f-tipi" role="group" aria-label="Tipo di capo"></div>
       <div class="attivi" id="attivi" role="group" aria-label="Filtri attivi"></div>
       <ul class="griglia" id="griglia"></ul>
@@ -470,6 +470,39 @@ function vistaArcobaleno() {
   </div>`;
 }
 
+// ---------- il prossimo capo: i posti vuoti dell'armadio che sbloccano più outfit ----------
+const COMPAGNI = { base: "t-shirt e camicie", mid: "felpe e maglioni", bottom: "pantaloni", shoes: "paia di scarpe" };
+const miniLook = (o) => `<ul class="mini-look">${[...o.pezzi].sort((a, b) => ORDINE[a.slot] - ORDINE[b.slot]).map((p) => `<li${p.nuovo ? ' class="nuovo"' : ""}>${p.nuovo ? `<span class="cornice">${visuale(p)}</span>` : `<a class="cornice" href="#capo/${esc(p.id)}" title="${esc(nomeCapo(p))}">${visuale(p)}</a>`}</li>`).join("")}</ul>`;
+const STRATI_PROSSIMO = [["", "Tutto"], ["base", "Maglie e camicie"], ["mid", "Felpe e maglioni"], ["bottom", "Pantaloni"], ["shoes", "Scarpe"]];
+function vistaProssimo() {
+  const attivi = filtra(st.capi, { stato: "attivo" });
+  const strato = st.strato ?? "";
+  const lista = prossimi(st.capi, { approvati: pezziApprovati(), ...(strato && { strato, quanti: 8 }) });
+  const n = (x) => x.toLocaleString("it-IT");
+  main.innerHTML = `<div class="oggi prossimo">
+    <a class="indietro" href="#armadio">Tutti i capi</a>
+    <div class="oggi-testa"><div><p class="marca">Calcolato sui tuoi ${attivi.length} capi attivi</p><h1>Il prossimo capo</h1>
+      <p class="sottotitolo">I posti vuoti del tuo armadio: tipo e colore che sbloccano più outfit nuovi con ciò che hai già, tra i colori che stanno bene alla tua pelle.</p></div></div>
+    <div class="seg filtro-strato" role="group" aria-label="Quale strato">${STRATI_PROSSIMO.map(([v, t]) => `<button type="button" data-strato="${v}" aria-pressed="${strato === v}">${t}</button>`).join("")}</div>
+    ${lista.length ? `<ol class="prossimi">${lista.map((x, i) => `<li class="proposta">
+      <div class="cornice">${visuale(x.capo)}</div>
+      <div class="proposta-testo">
+        <p class="marca">${i === 0 ? "Il più utile" : `${i + 1}° posto`}</p>
+        <h2>${esc(x.nome)}</h2>
+        <p class="sblocca"><b>≈ ${n(x.nuovi)}</b> outfit nuovi</p>
+        <ul class="motivi">
+          <li>Sta con ${Object.entries(x.compagni).filter(([s]) => s !== "mid" || x.compagni.mid).map(([s, k]) => `${k} ${COMPAGNI[s]}`).join(", ").replace(/, ([^,]*)$/, " e $1")} che hai.</li>
+          ${x.vicino >= 1 ? `<li>Non hai ancora nessun capo di questo tipo.</li>` : x.vicino < 0.15 ? `<li>Il colore somiglia a un capo che hai già: in classifica conta un po' meno.</li>` : ""}
+          ${x.pelle ? `<li>${esc(x.pelle.testo)}</li>` : ""}
+        </ul>
+        ${x.alternative.length ? `<p class="anche">Funziona anche in ${x.alternative.map((a) => `<span><i style="--c:${esc(a.capo.hex)}"></i>${esc(a.capo.colore)}</span>`).join(" ")}</p>` : ""}
+        ${x.esempi.length ? `<p class="per-esempio">Per esempio</p>${x.esempi.map(miniLook).join("")}` : ""}
+      </div>
+    </li>`).join("")}</ol>` : `<p class="avviso">Il tuo armadio copre già bene ogni combinazione: nessun posto vuoto che valga la spesa.</p>`}
+    <p class="stima">Stime calcolate dai colori delle foto e dalle regole di stile: contano gli outfit con un buon punteggio, non tutte le combinazioni.</p>
+  </div>`;
+}
+
 // ---------- preferiti: gli outfit col cuore, dal più recente ----------
 const CUORE = `<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 16.8S2.6 12.4 2.6 7.3A3.9 3.9 0 0 1 10 5.4a3.9 3.9 0 0 1 7.4 1.9c0 5.1-7.4 9.5-7.4 9.5Z"/></svg>`;
 // il lookbook: una griglia di outfit salvati, filtrabili per occasione, da indossare con un tocco
@@ -593,11 +626,12 @@ function render() {
   const arcobaleno = location.hash === "#arcobaleno";
   const crea = location.hash.startsWith("#crea");
   const preferiti = location.hash === "#preferiti";
-  const oggi = !(c || armadio || arcobaleno || crea || preferiti);
-  document.body.classList.toggle("in-dettaglio", !!c || oggi || arcobaleno || crea || preferiti);
+  const prossimo = location.hash === "#prossimo";
+  const oggi = !(c || armadio || arcobaleno || crea || preferiti || prossimo);
+  document.body.classList.toggle("in-dettaglio", !!c || oggi || arcobaleno || crea || preferiti || prossimo);
   // la sezione corrente: "page" sulla pagina stessa, "true" sulle sottopagine dell'armadio
   const corrente = { "vai-oggi": oggi && "page", "vai-crea": crea && "page", "vai-preferiti": preferiti && "page",
-    "vai-armadio": !(oggi || crea || preferiti) && (c || arcobaleno ? "true" : "page") };
+    "vai-armadio": !(oggi || crea || preferiti) && (c || arcobaleno || prossimo ? "true" : "page") };
   for (const [id, v] of Object.entries(corrente)) v ? $(`#${id}`).setAttribute("aria-current", v) : $(`#${id}`).removeAttribute("aria-current");
   document.body.classList.remove("filtri-aperti");
   if (preferiti) {
@@ -607,6 +641,10 @@ function render() {
   } else if (crea) {
     vistaCrea();
     document.title = "Componi · closetune";
+    window.scrollTo(0, 0);
+  } else if (prossimo) {
+    vistaProssimo();
+    document.title = "Il prossimo capo · closetune";
     window.scrollTo(0, 0);
   } else if (arcobaleno) {
     vistaArcobaleno();
@@ -661,6 +699,7 @@ document.addEventListener("click", (e) => {
   }
   else if (t.dataset.chiudiPicker !== undefined) t.closest("dialog").close();
   else if (t.dataset.approva) approva(t);
+  else if (t.dataset.strato !== undefined) { st.strato = t.dataset.strato; vistaProssimo(); $(`[data-strato="${st.strato}"]`).focus(); }
   else if (t.dataset.pref !== undefined) { st.filtroPref = t.dataset.pref; vistaPreferiti(); $(`[data-pref="${t.dataset.pref}"]`).focus(); }
   else if (t.dataset.mettiOggi) {
     // dal lookbook dritto in Oggi, già indossato
