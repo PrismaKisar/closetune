@@ -558,3 +558,37 @@ test("effetto: cosa cambia con un'alternativa, a parole", () => {
   const [chiari, scuri] = m.prepara([capo("j", "jeans", "#8fa3b5"), capo("k", "jeans", "#1f2633")]);
   assert.equal(m.effetto(chiari, scuri), "In denim scuro");
 });
+
+test("cielo: dal codice meteo WMO al tipo di giornata", () => {
+  assert.equal(m.cielo(0), "sereno");
+  assert.equal(m.cielo(3), "nuvoloso");
+  assert.equal(m.cielo(45), "nebbia");
+  assert.equal(m.cielo(61), "pioggia");
+  assert.equal(m.cielo(81), "pioggia");
+  assert.equal(m.cielo(73), "neve");
+  assert.equal(m.cielo(95), "temporale");
+  assert.equal(m.cielo(undefined), null);
+});
+
+test("meteo: pioggia, neve e sole cambiano scarpe, pantaloni e colori", () => {
+  const tutte = ["primavera", "estate", "autunno", "inverno"];
+  const k = (id, categoria, hex, extra = {}) => ({ id, categoria, hex, colore: "x", stato: "attivo", stagione: tutte, occasione: ["casual"], ...extra });
+  const capi = m.prepara([
+    k("t", "t-shirt", "#1e2a44"), k("tb", "t-shirt", "#f1f1ed"),
+    k("jb", "pantalone", "#ece8dc", { colore: "panna" }), k("j", "jeans", "#33424d"),
+    k("m", "sneaker", "#d2d4ce", { materiale: "mesh + sintetico" }),
+    k("b", "stivale", "#a0703a", { materiale: "nabuk" }),
+    k("l", "pantalone", "#d9cdb4", { materiale: "100% lino", stagione: ["estate"] }),
+  ]);
+  const d = new Date(2026, 6, 15);
+  const ids = (meteo, g) => m.delGiorno(capi, d, g, [], meteo).outfit.pezzi.map((p) => p.id);
+  for (let g = 0; g < 6; g++) {
+    const pioggia = ids({ min: 12, max: 18, pioggia: 20, cielo: "pioggia" }, g);
+    assert.ok(pioggia.includes("b") && !pioggia.includes("m"), "pioggia: scarpe che reggono l'acqua");
+    assert.ok(!pioggia.includes("jb") && !pioggia.includes("l"), "pioggia: niente pantaloni chiari");
+    assert.ok(ids({ min: -3, max: 1, pioggia: 0, cielo: "neve" }, g).includes("b"), "neve: stivali");
+    const sole = ids({ min: 24, max: 32, pioggia: 0, cielo: "sereno" }, g);
+    assert.ok(sole.includes("tb") && (sole.includes("l") || sole.includes("jb")), "sole e caldo: sopra e pantaloni chiari");
+  }
+  assert.ok([0, 1, 2, 3, 4, 5].some((g) => ids({ min: 24, max: 32, pioggia: 0, cielo: "sereno" }, g).includes("l")), "sole: il lino esce");
+});

@@ -1,4 +1,4 @@
-import { USCITE, perOccasione, vaPer, mancaPer, diversi, staBene, FAMIGLIE, NOMI_SLOT, TIPI, titoloOutfit, delGiorno, effetto, faccette, filtra, giudizio, giudizioPelle, impostaPelle, ordineArcobaleno, outfit, outfitDa, percentuale, prepara, taraSuApprovati, valuta, alternative } from "./abbinamenti.js";
+import { USCITE, perOccasione, vaPer, mancaPer, diversi, staBene, FAMIGLIE, NOMI_SLOT, TIPI, titoloOutfit, delGiorno, effetto, cielo, faccette, filtra, giudizio, giudizioPelle, impostaPelle, ordineArcobaleno, outfit, outfitDa, percentuale, prepara, taraSuApprovati, valuta, alternative } from "./abbinamenti.js";
 
 const STAGIONI = ["primavera", "estate", "autunno", "inverno"];
 const OCCASIONI = ["casual", "smart-casual", "elegante", "sportivo", "outdoor"];
@@ -319,9 +319,9 @@ async function caricaMeteo(citta) {
   const g = await (await fetch(`https://geocoding-api.open-meteo.com/v1/search?count=1&language=it&name=${encodeURIComponent(citta)}`)).json();
   const luogo = g.results?.[0];
   if (!luogo) throw new Error("citta");
-  const f = await (await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${luogo.latitude}&longitude=${luogo.longitude}&daily=temperature_2m_min,temperature_2m_max,precipitation_probability_max&timezone=auto&forecast_days=1`)).json();
+  const f = await (await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${luogo.latitude}&longitude=${luogo.longitude}&daily=temperature_2m_min,temperature_2m_max,precipitation_probability_max,weather_code&timezone=auto&forecast_days=1`)).json();
   const d = f.daily;
-  return { citta, nome: luogo.name, giorno: new Date().toDateString(), min: d.temperature_2m_min[0], max: d.temperature_2m_max[0], pioggia: d.precipitation_probability_max[0] ?? 0 };
+  return { citta, nome: luogo.name, giorno: new Date().toDateString(), min: d.temperature_2m_min[0], max: d.temperature_2m_max[0], pioggia: d.precipitation_probability_max[0] ?? 0, cielo: cielo(d.weather_code?.[0]) };
 }
 function aggiornaMeteo() {
   const citta = localStorage.getItem(CITTA);
@@ -335,14 +335,28 @@ function motivoMeteo(m) {
   const media = (m.min + m.max) / 2;
   const t = media >= 22 ? "Fa caldo: niente strato sopra, tessuti leggeri." : media >= 15 ? "Mezza stagione: uno strato leggero."
     : media >= 10 ? "Fresco: uno strato sopra." : "Fa freddo: si parte da uno strato pesante.";
-  return { tipo: "meteo", testo: m.pioggia >= 50 ? `${t} Pioggia probabile (${m.pioggia}%): niente scarpe in tela.` : t };
+  const bagnato = m.pioggia >= 50 || m.cielo === "pioggia" || m.cielo === "temporale";
+  const extra = m.cielo === "neve" ? " Neve: si esce con gli stivali."
+    : bagnato ? " Pioggia: scarpe che reggono l'acqua, niente pantaloni chiari."
+    : m.cielo === "sereno" && media >= 22 ? " Sole: colori chiari e lino scaldano meno." : "";
+  return { tipo: "meteo", testo: t + extra };
 }
 
 const PIN = `<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 18s-5.6-5.4-5.6-9.6a5.6 5.6 0 0 1 11.2 0C15.6 12.6 10 18 10 18Z"/><circle cx="10" cy="8.4" r="2"/></svg>`;
+// icone del tipo di giornata (tratto, come le altre icone)
+const NUVOLA = '<path d="M6 14.5h8.2a3.3 3.3 0 0 0 .3-6.6 4.6 4.6 0 0 0-8.8 1.1A2.8 2.8 0 0 0 6 14.5Z"/>';
+const CIELO = {
+  sereno: '<circle cx="10" cy="10" r="3.6"/><path d="M10 1.8v2.4M10 15.8v2.4M1.8 10h2.4M15.8 10h2.4M4.2 4.2l1.7 1.7M14.1 14.1l1.7 1.7M4.2 15.8l1.7-1.7M14.1 5.9l1.7-1.7"/>',
+  nuvoloso: NUVOLA,
+  nebbia: '<path d="M3 7h14M5 10.5h12M3 14h11"/>',
+  pioggia: NUVOLA.replace("14.5h8.2", "12.5h8.2").replace("2.8 2.8 0 0 0 6 14.5", "2.8 2.8 0 0 0 6 12.5") + '<path d="m7 15-1 2.5M10.5 15l-1 2.5M14 15l-1 2.5"/>',
+  temporale: NUVOLA.replace("14.5h8.2", "12.5h8.2").replace("2.8 2.8 0 0 0 6 14.5", "2.8 2.8 0 0 0 6 12.5") + '<path d="m10.5 13.5-2 3h3l-2 3"/>',
+  neve: NUVOLA.replace("14.5h8.2", "12.5h8.2").replace("2.8 2.8 0 0 0 6 14.5", "2.8 2.8 0 0 0 6 12.5") + '<path d="M7 16v.1M10.5 17.5v.1M14 16v.1"/>',
+};
 // il meteo come informazione leggibile; il campo città compare solo se manca o se la vuoi cambiare
 function rigaMeteo(citta, meteo) {
   const errore = st.meteo?.citta === citta && st.meteo.errore;
-  if (meteo && !st.modificaCitta) return `<div class="meteo">${PIN}<p><b>${esc(meteo.nome)}</b> · ${Math.round(meteo.min)}–${Math.round(meteo.max)}°C${meteo.pioggia >= 30 ? ` · pioggia ${meteo.pioggia}%` : ""}<span>${esc(motivoMeteo(meteo).testo)}</span></p><button type="button" class="link" data-modifica-citta>Cambia città</button></div>`;
+  if (meteo && !st.modificaCitta) return `<div class="meteo">${meteo.cielo ? `<svg viewBox="0 0 20 20" aria-hidden="true">${CIELO[meteo.cielo]}</svg>` : PIN}<p><b>${esc(meteo.nome)}</b>${meteo.cielo ? ` · ${meteo.cielo}` : ""} · ${Math.round(meteo.min)}–${Math.round(meteo.max)}°C${meteo.pioggia >= 30 ? ` · pioggia ${meteo.pioggia}%` : ""}<span>${esc(motivoMeteo(meteo).testo)}</span></p><button type="button" class="link" data-modifica-citta>Cambia città</button></div>`;
   if (citta && !errore && !st.modificaCitta) return `<div class="meteo" role="status">${PIN}<p>Leggo il meteo di ${esc(citta)}…</p></div>`;
   return `<form class="meteo citta" id="form-citta">${PIN}<label for="citta">${errore ? esc(errore) : "Con la tua città scelgo gli strati in base alla temperatura di oggi."}</label>
     <span class="citta-campo"><input id="citta" name="citta" placeholder="La tua città" value="${esc(citta)}" autocomplete="address-level2" enterkeyhint="done"><button class="btn">Usa</button></span></form>`;

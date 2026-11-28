@@ -501,9 +501,29 @@ export function stagioniMeteo({ min, max }) {
   const m = (min + max) / 2;
   return m >= 22 ? ["estate"] : m >= 15 ? ["primavera", "estate", "autunno"] : m >= 8 ? ["primavera", "autunno", "inverno"] : ["inverno"];
 }
+/** Il tipo di giornata dal codice meteo WMO di Open-Meteo. */
+export function cielo(codice) {
+  if (codice === undefined || codice === null) return null;
+  return codice <= 1 ? "sereno" : codice <= 3 ? "nuvoloso" : codice <= 48 ? "nebbia"
+    : codice >= 95 ? "temporale" : (codice >= 71 && codice <= 77) || codice === 85 || codice === 86 ? "neve" : "pioggia";
+}
 /** Con la pioggia non si esce con le scarpe in tela. */
 export const temePioggia = (c) => c.slot === "shoes" && /tela|canvas/i.test(`${c.materiale ?? ""} ${c.modello ?? ""}`);
 const PIOVE = 50;
+/** Quanto un capo soffre il tempo di oggi: 0 va bene, 1 meglio evitarlo, 2 da evitare (tela sotto la pioggia).
+ * Pioggia: niente tela, mesh, camoscio, pantaloni chiari. Neve: solo stivali. */
+export function rischioMeteo(c, meteo) {
+  if (!meteo) return 0;
+  const bagnato = meteo.pioggia >= PIOVE || meteo.cielo === "pioggia" || meteo.cielo === "temporale";
+  const neve = meteo.cielo === "neve";
+  if (!bagnato && !neve) return 0;
+  if (temePioggia(c)) return 2;
+  const stoffa = `${c.materiale ?? ""} ${c.modello ?? ""}`;
+  if (c.slot === "shoes" && (/mesh|camoscio|suede/i.test(stoffa) || (neve && !/stival|boot/i.test(c.categoria)))) return 1;
+  return bagnato && c.slot === "bottom" && c.lch.L >= 0.75 ? 1 : 0;
+}
+/** Sole e caldo: colori chiari e lino scaldano meno (il lino conta doppio). */
+const fresco = (c) => (c.lch.L >= 0.7 ? 1 : 0) + (/lino/i.test(c.materiale ?? "") ? 1 : 0);
 
 /** L'outfit del giorno: stesso giorno e stesso `giro` danno lo stesso outfit; `giro` + 1 ne propone un altro.
  * Parte da uno strato di sopra della stagione (d'estate dalla base), poi pesca tra i 3 migliori attorno a lui.
@@ -511,12 +531,12 @@ const PIOVE = 50;
 export function delGiorno(pool, data = new Date(), giro = 0, approvati = [], meteo = null, occ = null) {
   const stagione = stagioneDi(data);
   const valide = meteo ? stagioniMeteo(meteo) : [stagione];
-  const asciutto = (c) => !(meteo?.pioggia >= PIOVE && temePioggia(c));
   const diStagione = (c) => stagioni(c).some((s) => valide.includes(s));
-  // per ogni ruolo: il capo giusto; se non c'è, meglio uno asciutto fuori stagione che niente
+  // per ogni ruolo: il capo giusto; se non c'è, meglio uno adatto al tempo fuori stagione che niente
+  const regge = (max) => (c) => rischioMeteo(c, meteo) <= max;
   const adatti = [...new Set(pool.map((c) => c.slot))].flatMap((slot) => {
     const qui = pool.filter((c) => c.slot === slot);
-    for (const ok of [(c) => asciutto(c) && diStagione(c), asciutto, diStagione]) if (qui.some(ok)) return qui.filter(ok);
+    for (const ok of [(c) => regge(0)(c) && diStagione(c), regge(0), (c) => regge(1)(c) && diStagione(c), regge(1), diStagione]) if (qui.some(ok)) return qui.filter(ok);
     return qui;
   });
   const r = caso(data.getFullYear() * 10000 + (data.getMonth() + 1) * 100 + data.getDate() + giro * 7919);
@@ -530,10 +550,15 @@ export function delGiorno(pool, data = new Date(), giro = 0, approvati = [], met
   const mid = adatti.filter((c) => c.slot === "mid");
   const sopra = amici(mid.some(giusto) ? mid.filter(giusto) : mid);
   const tutte = !estivo && sopra.length ? sopra : amici(adatti.filter((c) => c.slot === "base"));
-  const partenze = occ ? tutte.filter((c) => c.occasione.includes(occ)) : tutte;
+  const perOcc = occ ? tutte.filter((c) => c.occasione.includes(occ)) : tutte;
+  const sole = meteo?.cielo === "sereno" && media >= 22;
+  const partenze = sole && perOcc.some(fresco) ? perOcc.filter(fresco) : perOcc;
   if (!partenze.length) return { stagione, scelto: null, outfit: null };
   const scelto = partenze[Math.floor(r() * partenze.length)];
-  const migliori = outfit(scelto, adatti, { n: occ ? 30 : 3, approvati }).outfit.filter((o) => !occ || vaPer(o.pezzi, occ)).slice(0, 3);
+  const fresche = (o) => o.pezzi.reduce((n, p) => n + fresco(p), 0);
+  const candidati = outfit(scelto, adatti, { n: occ || sole ? 30 : 3, approvati }).outfit.filter((o) => !occ || vaPer(o.pezzi, occ));
+  // col sole vince il più fresco (sort stabile: a pari freschezza resta l'ordine per punteggio)
+  const migliori = (sole ? candidati.sort((a, b) => fresche(b) - fresche(a)) : candidati).slice(0, 3);
   return { stagione, scelto, adatti, outfit: migliori[Math.floor(r() * migliori.length)] ?? null };
 }
 
