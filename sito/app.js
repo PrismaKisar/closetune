@@ -186,7 +186,7 @@ const SPIEGA_PELLE = "Quanto i colori vicino al viso valorizzano la tua carnagio
 const tipoCapo = (p) => cap(p.categoria);
 
 // opzioni: livello del titolo, fissi = capi scelti da te (cerchiati), oggi = la composizione grande di Oggi
-function schedaOutfit(o, { i = 0, scelto = o.pezzi[0], fissi = [scelto], oggi = null, livello = 3 } = {}) {
+function schedaOutfit(o, { i = 0, scelto = o.pezzi[0], fissi = [scelto], oggi = null, livello = 3, metti = false } = {}) {
   const pezzi = [...o.pezzi].sort((a, b) => ORDINE[a.slot] - ORDINE[b.slot]);
   const g = giudizio(o.punteggio);
   const gp = o.pelle !== undefined ? giudizioPelle(o.pelle) : null;
@@ -249,6 +249,7 @@ function schedaOutfit(o, { i = 0, scelto = o.pezzi[0], fissi = [scelto], oggi = 
     </header>
     ${foto}
     ${sintesi ? `<p class="sintesi">${esc(sintesi.testo)}</p>` : ""}
+    ${metti ? `<button type="button" class="btn primario metti" data-metti-oggi="${esc(pezzi.map((p) => p.id).join(","))}">Lo metto oggi</button>` : ""}
     ${perche}
   </article>`;
 }
@@ -471,13 +472,18 @@ function vistaArcobaleno() {
 
 // ---------- preferiti: gli outfit col cuore, dal più recente ----------
 const CUORE = `<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 16.8S2.6 12.4 2.6 7.3A3.9 3.9 0 0 1 10 5.4a3.9 3.9 0 0 1 7.4 1.9c0 5.1-7.4 9.5-7.4 9.5Z"/></svg>`;
+// il lookbook: una griglia di outfit salvati, filtrabili per occasione, da indossare con un tocco
 function vistaPreferiti() {
-  const preferiti = pezziApprovati().filter((p) => p.length).reverse();
+  const tutti = pezziApprovati().filter((p) => p.length).reverse();
+  const occ = st.filtroPref ?? "";
+  const preferiti = occ ? tutti.filter((pz) => vaPer(pz, occ)) : tutti;
+  const occasioni = USCITE.filter(([v]) => tutti.some((pz) => vaPer(pz, v)));
   main.innerHTML = `<div class="oggi preferiti">
-    <div class="oggi-testa"><div><p class="marca">${preferiti.length} outfit · dal più recente</p><h1>Preferiti</h1>
+    <div class="oggi-testa"><div><p class="marca">${tutti.length} outfit · dal più recente</p><h1>Preferiti</h1>
       <p class="sottotitolo">Tocca il cuore su un outfit, in Oggi, Componi o nella scheda di un capo, per salvarlo qui. Toccalo di nuovo per toglierlo.${st.statico ? " Restano su questo dispositivo." : ""}</p></div></div>
-    ${preferiti.length ? preferiti.map((pz, i) => schedaOutfit(valuta(pz, pz[0], st.approvati), { i, fissi: [], livello: 2 })).join("")
-      : `<p class="avviso">Ancora nessun preferito: tocca il cuore su un outfit che ti piace.</p>`}
+    ${occasioni.length > 1 ? `<div class="seg filtro-pref" role="group" aria-label="Filtra per occasione"><button type="button" data-pref="" aria-pressed="${!occ}">Tutti</button>${occasioni.map(([v, t]) => `<button type="button" data-pref="${v}" aria-pressed="${occ === v}">${t}</button>`).join("")}</div>` : ""}
+    ${preferiti.length ? `<div class="lookbook">${preferiti.map((pz, i) => schedaOutfit(valuta(pz, pz[0], st.approvati), { i, fissi: [], livello: 2, metti: true })).join("")}</div>`
+      : `<p class="avviso">${tutti.length ? "Nessun preferito per questa occasione." : "Ancora nessun preferito: tocca il cuore su un outfit che ti piace."}</p>`}
   </div>`;
 }
 
@@ -655,6 +661,14 @@ document.addEventListener("click", (e) => {
   }
   else if (t.dataset.chiudiPicker !== undefined) t.closest("dialog").close();
   else if (t.dataset.approva) approva(t);
+  else if (t.dataset.pref !== undefined) { st.filtroPref = t.dataset.pref; vistaPreferiti(); $(`[data-pref="${t.dataset.pref}"]`).focus(); }
+  else if (t.dataset.mettiOggi) {
+    // dal lookbook dritto in Oggi, già indossato
+    const ids = t.dataset.mettiOggi.split(",");
+    localStorage.setItem(INDOSSATO, JSON.stringify({ data: new Date().toDateString(), ids }));
+    st.oggiPezzi = ids;
+    location.hash = "oggi";
+  }
   else if (t.dataset.appeso || t.id === "ricomincia-appesi") {
     const id = t.dataset.appeso;
     const lista = id ? appesi() : [];
