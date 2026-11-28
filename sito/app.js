@@ -231,19 +231,65 @@ function vistaDettaglio(c) {
   osservatore.observe($("#altri"));
 }
 
+// ---------- meteo (Open-Meteo: gratis, senza chiave) ----------
+const CITTA = "closetune-citta";
+async function caricaMeteo(citta) {
+  const g = await (await fetch(`https://geocoding-api.open-meteo.com/v1/search?count=1&language=it&name=${encodeURIComponent(citta)}`)).json();
+  const luogo = g.results?.[0];
+  if (!luogo) throw new Error("citta");
+  const f = await (await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${luogo.latitude}&longitude=${luogo.longitude}&daily=temperature_2m_min,temperature_2m_max,precipitation_probability_max&timezone=auto&forecast_days=1`)).json();
+  const d = f.daily;
+  return { citta, nome: luogo.name, giorno: new Date().toDateString(), min: d.temperature_2m_min[0], max: d.temperature_2m_max[0], pioggia: d.precipitation_probability_max[0] ?? 0 };
+}
+function aggiornaMeteo() {
+  const citta = localStorage.getItem(CITTA);
+  if (!citta || st.meteoInCorso || (st.meteo?.citta === citta && st.meteo.giorno === new Date().toDateString())) return;
+  st.meteoInCorso = true;
+  caricaMeteo(citta)
+    .then((m) => { st.meteo = m; }, (e) => { st.meteo = { citta, errore: e.message === "citta" ? "Città non trovata." : "Meteo non raggiungibile: uso la stagione." }; })
+    .finally(() => { st.meteoInCorso = false; if (location.hash === "#oggi") vistaOggi(); });
+}
+function motivoMeteo(m) {
+  const media = (m.min + m.max) / 2;
+  const t = media >= 22 ? "Fa caldo: niente strato sopra, tessuti leggeri." : media >= 15 ? "Mezza stagione: uno strato leggero."
+    : media >= 10 ? "Fresco: uno strato sopra." : "Fa freddo: si parte da uno strato pesante.";
+  return { tipo: "meteo", testo: m.pioggia >= 50 ? `${t} Pioggia probabile (${m.pioggia}%): niente scamosciato né lino.` : t };
+}
+
 function vistaOggi() {
+  aggiornaMeteo();
   const oggi = new Date();
-  const { stagione, scelto, outfit: o } = delGiorno(filtra(st.capi, { stato: "attivo" }), oggi, st.giro, st.approvati);
+  const citta = localStorage.getItem(CITTA) ?? "";
+  const meteo = st.meteo?.citta === citta && !st.meteo.errore ? st.meteo : null;
+  const { stagione, scelto, outfit: o } = delGiorno(filtra(st.capi, { stato: "attivo" }), oggi, st.giro, st.approvati, meteo);
+  if (o && meteo) o.perche = [motivoMeteo(meteo), ...o.perche];
   const data = oggi.toLocaleDateString("it-IT", { weekday: "long", day: "numeric", month: "long" });
+  const riga = meteo ? `${esc(meteo.nome)} · ${Math.round(meteo.min)}–${Math.round(meteo.max)}°C${meteo.pioggia >= 30 ? ` · pioggia ${meteo.pioggia}%` : ""}`
+    : st.meteo?.citta === citta && st.meteo.errore ? esc(st.meteo.errore) : citta ? "Leggo il meteo…" : esc(cap(stagione));
   main.innerHTML = `<div class="oggi">
     <a class="indietro" href="#">Tutti i capi</a>
     <div class="oggi-testa">
-      <div><p class="marca">${esc(cap(data))} · ${esc(cap(stagione))}</p><h1>Outfit di oggi</h1></div>
-      <button type="button" class="btn" id="rimescola">Un altro</button>
+      <div><p class="marca">${esc(cap(data))} · <span id="meteo">${riga}</span></p><h1>Outfit di oggi</h1></div>
+      <div class="oggi-azioni">
+        <form class="citta" id="form-citta"><label><span class="sr">La tua città</span>
+          <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 18s-5.6-5.4-5.6-9.6a5.6 5.6 0 0 1 11.2 0C15.6 12.6 10 18 10 18Z"/><circle cx="10" cy="8.4" r="2"/></svg>
+          <input id="citta" name="citta" placeholder="La tua città" value="${esc(citta)}" autocomplete="address-level2" enterkeyhint="done"></label></form>
+        <button type="button" class="btn" id="rimescola">Un altro</button>
+      </div>
     </div>
     ${o ? schedaOutfit(o, st.giro, scelto) : `<p class="avviso">Nessun capo attivo adatto all'${esc(stagione)}.</p>`}
   </div>`;
 }
+
+document.addEventListener("submit", (e) => {
+  if (e.target.id !== "form-citta") return;
+  e.preventDefault();
+  const citta = e.target.citta.value.trim();
+  if (citta) localStorage.setItem(CITTA, citta); else localStorage.removeItem(CITTA);
+  st.meteo = null;
+  st.giro = 0;
+  vistaOggi();
+});
 
 function vistaArcobaleno() {
   const capi = ordineArcobaleno(st.capi);

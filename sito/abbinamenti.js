@@ -1,5 +1,5 @@
 // Logica pura dell'armadio: colore (OKLCH), filtri, punteggi di abbinamento, outfit e motivazioni.
-import { gusto, impostaContrasto, neutroEsteso } from "./gusto.js";
+import { gusto, impostaContrasto, neutroEsteso, peso as pesoTessuto } from "./gusto.js";
 export { taraSuApprovati } from "./gusto.js";
 
 // ---------- colore ----------
@@ -398,17 +398,44 @@ const caso = (n) => () => {
   return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
 };
 
+// ---------- meteo: la temperatura di oggi al posto del mese ----------
+/** Stagioni dei capi adatte a una giornata (`meteo` = { min, max, pioggia } in °C e % di probabilità). */
+export function stagioniMeteo({ min, max }) {
+  const m = (min + max) / 2;
+  return m >= 22 ? ["estate"] : m >= 15 ? ["primavera", "estate", "autunno"] : m >= 8 ? ["primavera", "autunno", "inverno"] : ["inverno"];
+}
+/** Capi che la pioggia rovina: scamosciato, nabuk, lino, scarpe chiare in tela. */
+export const temePioggia = (c) => {
+  const t = `${c.materiale ?? ""} ${c.modello ?? ""}`.toLowerCase();
+  return /nabuk|scamosciat|camoscio|suede|lino/.test(t) || (c.slot === "shoes" && /tela|canvas/.test(t) && c.lch.L > 0.8);
+};
+const PIOVE = 50;
+
 /** L'outfit del giorno: stesso giorno e stesso `giro` danno lo stesso outfit; `giro` + 1 ne propone un altro.
- * Parte da uno strato di sopra della stagione (d'estate dalla base), poi pesca tra i 3 migliori attorno a lui. */
-export function delGiorno(pool, data = new Date(), giro = 0, approvati = []) {
+ * Parte da uno strato di sopra della stagione (d'estate dalla base), poi pesca tra i 3 migliori attorno a lui.
+ * Con `meteo` la stagione la decide la temperatura di oggi e con la pioggia restano a casa i capi delicati. */
+export function delGiorno(pool, data = new Date(), giro = 0, approvati = [], meteo = null) {
   const stagione = stagioneDi(data);
-  const adatti = pool.filter((c) => stagioni(c).includes(stagione));
+  const valide = meteo ? stagioniMeteo(meteo) : [stagione];
+  const asciutto = (c) => !(meteo?.pioggia >= PIOVE && temePioggia(c));
+  const diStagione = (c) => stagioni(c).some((s) => valide.includes(s));
+  // per ogni ruolo: il capo giusto; se non c'è, meglio uno asciutto fuori stagione che niente
+  const adatti = [...new Set(pool.map((c) => c.slot))].flatMap((slot) => {
+    const qui = pool.filter((c) => c.slot === slot);
+    for (const ok of [(c) => asciutto(c) && diStagione(c), asciutto, diStagione]) if (qui.some(ok)) return qui.filter(ok);
+    return qui;
+  });
   const r = caso(data.getFullYear() * 10000 + (data.getMonth() + 1) * 100 + data.getDate() + giro * 7919);
   // si parte da un capo che sta bene col viso (se ce n'è almeno uno)
   const ok = (c) => (viso(c)?.voto ?? 0.6) >= 0.6;
   const amici = (lista) => (lista.some(ok) ? lista.filter(ok) : lista);
-  const sopra = amici(adatti.filter((c) => c.slot === "mid"));
-  const partenze = stagione !== "estate" && sopra.length ? sopra : amici(adatti.filter((c) => c.slot === "base"));
+  const media = meteo && (meteo.min + meteo.max) / 2;
+  const estivo = meteo ? media >= 22 : stagione === "estate";
+  // col freddo vero si parte da uno strato pesante, a mezza stagione da uno leggero
+  const giusto = (c) => !meteo || (media < 10 ? pesoTessuto(c) >= 3 : media >= 15 ? pesoTessuto(c) <= 2 : true);
+  const mid = adatti.filter((c) => c.slot === "mid");
+  const sopra = amici(mid.some(giusto) ? mid.filter(giusto) : mid);
+  const partenze = !estivo && sopra.length ? sopra : amici(adatti.filter((c) => c.slot === "base"));
   if (!partenze.length) return { stagione, scelto: null, outfit: null };
   const scelto = partenze[Math.floor(r() * partenze.length)];
   const { outfit: migliori } = outfit(scelto, adatti, { n: 3, approvati });
