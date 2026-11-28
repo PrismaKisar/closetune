@@ -293,6 +293,20 @@ test("outfit del giorno: stabile nel giorno, cambia col giro, rispetta la stagio
   assert.ok(lug.outfit.pezzi.every((p) => p.slot !== "mid"));
   assert.equal(m.delGiorno([], nov).outfit, null);
   for (let g = 0; g < 8; g++) assert.ok(m.viso(m.delGiorno(capi, nov, g).scelto).voto >= 0.6, "parte da un capo che sta bene col viso");
+  // ieri hai messo l'outfit di oggi: se c'è un'alternativa, oggi i capi grandi cambiano
+  const ieri = a.outfit.pezzi.map((p) => p.id);
+  const dopo = m.delGiorno(capi, nov, 0, [], null, null, ieri);
+  const grandi = (o) => o.outfit.pezzi.filter((p) => ["base", "mid", "bottom"].includes(p.slot)).map((p) => p.id);
+  assert.notDeepEqual(grandi(dopo), grandi(a), "non lo stesso outfit di fila");
+  assert.ok(!ieri.includes(dopo.scelto.id), "parte da uno strato non messo ieri");
+});
+
+test("recenti: i capi degli ultimi giorni, oggi escluso", () => {
+  const oggi = new Date(2026, 10, 28, 15);
+  const g = (n) => new Date(2026, 10, 28 - n).setHours(0, 0, 0, 0);
+  const st = [{ giorno: g(0), ids: ["oggi"] }, { giorno: g(1), ids: ["ieri"] }, { giorno: g(3), ids: ["tre"] }, { giorno: g(4), ids: ["quattro"] }];
+  assert.deepEqual(m.recenti(st, oggi), ["ieri", "tre"]);
+  assert.deepEqual(m.recenti([], oggi), []);
 });
 
 test("filtra per strato (sopra, sotto, pantaloni)", () => {

@@ -1,4 +1,4 @@
-import { inPausa, prossimi, USCITE, perOccasione, vaPer, mancaPer, tre, staBene, FAMIGLIE, NOMI_SLOT, TIPI, titoloOutfit, delGiorno, effetto, cielo, faccette, filtra, giudizio, giudizioPelle, impostaPelle, ordineArcobaleno, outfit, outfitDa, percentuale, prepara, taraSuApprovati, valuta, alternative } from "./abbinamenti.js";
+import { recenti, inPausa, prossimi, USCITE, perOccasione, vaPer, mancaPer, tre, staBene, FAMIGLIE, NOMI_SLOT, TIPI, titoloOutfit, delGiorno, effetto, cielo, faccette, filtra, giudizio, giudizioPelle, impostaPelle, ordineArcobaleno, outfit, outfitDa, percentuale, prepara, taraSuApprovati, valuta, alternative } from "./abbinamenti.js";
 
 const STAGIONI = ["primavera", "estate", "autunno", "inverno"];
 const OCCASIONI = ["casual", "smart-casual", "elegante", "sportivo", "outdoor"];
@@ -388,6 +388,16 @@ const indossatoOggi = () => {
   const v = JSON.parse(localStorage.getItem(INDOSSATO) || "null");
   return v?.data === new Date().toDateString() ? v.ids : null;
 };
+// lo storico degli ultimi giorni: serve a non riproporre lo stesso outfit di fila
+const STORICO = "closetune-storico";
+const storico = () => JSON.parse(localStorage.getItem(STORICO) || "[]");
+function segnaIndossato(ids) {
+  const giorno = new Date().setHours(0, 0, 0, 0);
+  const resto = storico().filter((v) => v.giorno !== giorno && v.giorno > giorno - 14 * 864e5);
+  localStorage.setItem(STORICO, JSON.stringify(ids ? [...resto, { giorno, ids }] : resto));
+  if (ids) localStorage.setItem(INDOSSATO, JSON.stringify({ data: new Date().toDateString(), ids }));
+  else localStorage.removeItem(INDOSSATO);
+}
 const stessiCapi = (a = [], b = []) => a.length === b.length && a.every((id) => b.includes(id));
 
 function vistaOggi() {
@@ -399,7 +409,7 @@ function vistaOggi() {
   const manca = avvisoUscita(attivi);
   // all'apertura, se oggi hai già scelto un outfit, si riparte da quello
   if (st.oggiPezzi === undefined) st.oggiPezzi = indossatoOggi();
-  let { stagione, scelto, outfit: o, adatti } = manca ? { stagione: delGiorno(attivi, oggi).stagione } : delGiorno(perOccasione(attivi, st.uscita), oggi, st.giro, st.approvati, meteo, st.uscita);
+  let { stagione, scelto, outfit: o, adatti } = manca ? { stagione: delGiorno(attivi, oggi).stagione } : delGiorno(perOccasione(attivi, st.uscita), oggi, st.giro, st.approvati, meteo, st.uscita, recenti(storico(), oggi));
   // pezzi cambiati a mano: gli altri restano fermi
   const cambiati = st.oggiPezzi?.map((id) => st.capi.find((c) => c.id === id)).filter(Boolean);
   if (o && cambiati?.length) {
@@ -740,7 +750,7 @@ document.addEventListener("click", (e) => {
   else if (t.dataset.mettiOggi) {
     // dal lookbook dritto in Oggi, già indossato
     const ids = t.dataset.mettiOggi.split(",");
-    localStorage.setItem(INDOSSATO, JSON.stringify({ data: new Date().toDateString(), ids }));
+    segnaIndossato(ids);
     st.oggiPezzi = ids;
     location.hash = "oggi";
   }
@@ -789,8 +799,7 @@ document.addEventListener("click", (e) => {
   }
   else if (t.dataset.indossa !== undefined) {
     const ids = st.oggiCorrente.pezzi.map((p) => p.id);
-    if (t.getAttribute("aria-pressed") === "true") localStorage.removeItem(INDOSSATO);
-    else localStorage.setItem(INDOSSATO, JSON.stringify({ data: new Date().toDateString(), ids }));
+    segnaIndossato(t.getAttribute("aria-pressed") === "true" ? null : ids);
     st.oggiPezzi = ids;
     vistaOggi();
     $("[data-indossa]").focus({ preventScroll: true });

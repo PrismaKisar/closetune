@@ -563,7 +563,8 @@ const fresco = (c) => (c.lch.L >= 0.7 ? 1 : 0) + (/lino/i.test(c.materiale ?? ""
 /** L'outfit del giorno: stesso giorno e stesso `giro` danno lo stesso outfit; `giro` + 1 ne propone un altro.
  * Parte da uno strato di sopra della stagione (d'estate dalla base), poi pesca tra i 3 migliori attorno a lui.
  * Con `meteo` la stagione la decide la temperatura di oggi e con la pioggia restano a casa le scarpe in tela. */
-export function delGiorno(pool, data = new Date(), giro = 0, approvati = [], meteo = null, occ = null) {
+// recenti = id dei capi indossati nei giorni scorsi: maglie, strati e pantaloni non si ripetono di fila (scarpe e cinture sì)
+export function delGiorno(pool, data = new Date(), giro = 0, approvati = [], meteo = null, occ = null, recenti = []) {
   const stagione = stagioneDi(data);
   const valide = meteo ? stagioniMeteo(meteo) : [stagione];
   const diStagione = (c) => stagioni(c).some((s) => valide.includes(s));
@@ -587,11 +588,15 @@ export function delGiorno(pool, data = new Date(), giro = 0, approvati = [], met
   const tutte = !estivo && sopra.length ? sopra : amici(adatti.filter((c) => c.slot === "base"));
   const perOcc = occ ? tutte.filter((c) => c.occasione.includes(occ)) : tutte;
   const sole = meteo?.cielo === "sereno" && media >= 22;
-  const partenze = sole && perOcc.some(fresco) ? perOcc.filter(fresco) : perOcc;
+  const soleggiate = sole && perOcc.some(fresco) ? perOcc.filter(fresco) : perOcc;
+  const nuovo = (c) => !recenti.includes(c.id);
+  const partenze = soleggiate.some(nuovo) ? soleggiate.filter(nuovo) : soleggiate;
   if (!partenze.length) return { stagione, scelto: null, outfit: null };
   const scelto = partenze[Math.floor(r() * partenze.length)];
   const fresche = (o) => o.pezzi.reduce((n, p) => n + fresco(p), 0);
-  const candidati = outfit(scelto, adatti, { n: occ || sole ? 30 : 3, approvati }).outfit.filter((o) => !occ || vaPer(o.pezzi, occ));
+  const tutti = outfit(scelto, adatti, { n: occ || sole || recenti.length ? 30 : 3, approvati }).outfit.filter((o) => !occ || vaPer(o.pezzi, occ));
+  const fresco3 = (o) => o.pezzi.every((p) => !["base", "mid", "bottom"].includes(p.slot) || nuovo(p));
+  const candidati = tutti.some(fresco3) ? tutti.filter(fresco3) : tutti;
   // col sole vince il più fresco (sort stabile: a pari freschezza resta l'ordine per punteggio)
   const migliori = (sole ? candidati.sort((a, b) => fresche(b) - fresche(a)) : candidati).slice(0, 3);
   return { stagione, scelto, adatti, outfit: migliori[Math.floor(r() * migliori.length)] ?? null };
@@ -735,3 +740,9 @@ export function prossimi(capi, { quanti = 4, campioni = 160, approvati = [], str
 // ---------- capi in pausa (in lavatrice): fuori da Oggi e Componi fino a una data ----------
 /** pause = { id: fino (ms) }: gli id ancora in pausa adesso. */
 export const inPausa = (pause, ora = Date.now()) => new Set(Object.entries(pause).filter(([, fino]) => fino > ora).map(([id]) => id));
+
+/** storico = [{ giorno: ms a mezzanotte, ids }]: gli id indossati negli ultimi `giorni` giorni, oggi escluso. */
+export function recenti(storico, oggi = new Date(), giorni = 3) {
+  const zero = new Date(oggi).setHours(0, 0, 0, 0);
+  return storico.filter((v) => v.giorno < zero && v.giorno >= zero - giorni * 864e5).flatMap((v) => v.ids);
+}
