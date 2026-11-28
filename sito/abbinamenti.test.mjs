@@ -391,3 +391,15 @@ test("strato sopra facoltativo: d'estate la polo va da sola, d'inverno serve lo 
   // i jeans invernali non reggono un outfit senza strato
   for (const x of m.outfit(jw, capi).outfit) assert.ok(x.pezzi.some((p) => p.slot === "mid"));
 });
+
+test("valuta: un preferito ha voto, motivi e pezzi come gli outfit proposti", () => {
+  const capi = m.prepara([
+    { id: "t", categoria: "t-shirt", hex: "#f1f1ed", colore: "bianco", stato: "attivo", stagione: ["estate"], occasione: ["casual"] },
+    { id: "j", categoria: "jeans", hex: "#33424d", colore: "blu", stato: "attivo", stagione: ["estate"], occasione: ["casual"] },
+    { id: "s", categoria: "sneaker", hex: "#d2d4ce", colore: "grigio", stato: "attivo", stagione: ["estate"], occasione: ["casual"] },
+  ]);
+  const o = m.valuta(capi, capi[0], [["t", "j", "s"]]);
+  assert.equal(o.pezzi.length, 3);
+  assert.ok(o.punteggio > 0 && o.punteggio <= 1);
+  assert.ok(Array.isArray(o.perche) && o.perche.length);
+});

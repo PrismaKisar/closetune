@@ -419,4 +419,8 @@ h1, h2, h3 { margin: 0; font-weight: 400; }
 .btn-approva:hover:not(:disabled) { background: var(--surface); }
 .btn-approva:active:not(:disabled) { transform: scale(.97); }
 .btn-approva[aria-pressed="true"] { background: var(--accent); color: #fff; box-shadow: none; cursor: default; }
+.btn-approva { display: inline-flex; align-items: center; gap: 8px; }
+.btn-approva svg, .btn-preferiti svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linejoin: round; }
+.btn-approva[aria-pressed="true"] svg, .btn-preferiti[aria-current] svg { fill: currentColor; }
+.preferiti .outfit + .outfit { margin-top: 24px; }
 .btn-approva:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }

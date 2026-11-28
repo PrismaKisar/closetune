@@ -323,6 +323,10 @@ export function outfitDa(fissi, pool, { n = Infinity, approvati = [], perSlot = 
   return { outfit: scelti.map((o) => ({ ...o, pelle: PELLE ? pelleOutfit(o.pezzi) : undefined, perche: perche(o.pezzi, scelto, approvati) })), mancanti };
 }
 
+/** Un outfit già fatto (es. un preferito) con voto, pelle e motivi, come quelli proposti. */
+export const valuta = (pezzi, scelto = pezzi[0], approvati = []) =>
+  ({ pezzi, punteggio: punteggioOutfit(pezzi, approvati), pelle: PELLE ? pelleOutfit(pezzi) : undefined, perche: perche(pezzi, scelto, approvati) });
+
 export function giudizio(p) {
   return p >= 0.85 ? "Ottimo" : p >= 0.72 ? "Buono" : p >= 0.55 ? "Discreto" : "Azzardato";
 }
@@ -379,7 +383,7 @@ export function perche(pezzi, scelto, approvati = []) {
   if (v) righe.push({ tipo: "viso", testo: v.testo });
   righe.push(...gusto(pezzi).note.slice(0, 2));
   const ids = new Set(pezzi.map((x) => x.id));
-  if (approvati.some((o) => o.length && o.every((id) => ids.has(id)))) righe.push({ tipo: "approvato", testo: "Combinazione già approvata in outfit.md." });
+  if (approvati.some((o) => o.length && o.every((id) => ids.has(id)))) righe.push({ tipo: "approvato", testo: "È tra i tuoi preferiti." });
   return righe;
 }
 

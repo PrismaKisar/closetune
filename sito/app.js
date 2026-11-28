@@ -1,4 +1,4 @@
-import { FAMIGLIE, NOMI_SLOT, RELAZIONI, TIPI, delGiorno, filtra, giudizio, giudizioPelle, impostaPelle, ordineArcobaleno, outfit, outfitDa, percentuale, prepara, taraSuApprovati } from "./abbinamenti.js";
+import { FAMIGLIE, NOMI_SLOT, RELAZIONI, TIPI, delGiorno, filtra, giudizio, giudizioPelle, impostaPelle, ordineArcobaleno, outfit, outfitDa, percentuale, prepara, taraSuApprovati, valuta } from "./abbinamenti.js";
 
 const STAGIONI = ["primavera", "estate", "autunno", "inverno"];
 const OCCASIONI = ["casual", "smart-casual", "elegante", "sportivo", "outdoor"];
@@ -254,6 +254,18 @@ function vistaArcobaleno() {
   </div>`;
 }
 
+// ---------- preferiti: gli outfit col cuore, dal più recente ----------
+const CUORE = `<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 16.8S2.6 12.4 2.6 7.3A3.9 3.9 0 0 1 10 5.4a3.9 3.9 0 0 1 7.4 1.9c0 5.1-7.4 9.5-7.4 9.5Z"/></svg>`;
+function vistaPreferiti() {
+  const preferiti = pezziApprovati().filter((p) => p.length).reverse();
+  main.innerHTML = `<div class="oggi preferiti">
+    <a class="indietro" href="#">Tutti i capi</a>
+    <div class="oggi-testa"><div><p class="marca">${preferiti.length} outfit · dal più recente</p><h1>Preferiti</h1></div></div>
+    ${preferiti.length ? preferiti.map((pz, i) => schedaOutfit(valuta(pz, pz[0], st.approvati), i, pz[0], i, [])).join("")
+      : `<p class="avviso">Ancora nessun preferito: tocca il cuore su un outfit che ti piace.</p>`}
+  </div>`;
+}
+
 // ---------- outfit builder: scegli i capi, completa il resto ----------
 const fissiDaHash = () => (location.hash.match(/^#crea\/([\w,]+)/)?.[1].split(",") ?? [])
   .map((id) => st.capi.find((c) => c.id === id)).filter(Boolean);
@@ -311,11 +323,17 @@ function render() {
   const oggi = location.hash === "#oggi";
   const arcobaleno = location.hash === "#arcobaleno";
   const crea = location.hash.startsWith("#crea");
-  document.body.classList.toggle("in-dettaglio", !!c || oggi || arcobaleno || crea);
+  const preferiti = location.hash === "#preferiti";
+  document.body.classList.toggle("in-dettaglio", !!c || oggi || arcobaleno || crea || preferiti);
+  $("#vai-preferiti").toggleAttribute("aria-current", preferiti);
   $("#vai-crea").toggleAttribute("aria-current", crea);
   document.body.classList.remove("filtri-aperti");
   $("#vai-oggi").toggleAttribute("aria-current", oggi);
-  if (crea) {
+  if (preferiti) {
+    vistaPreferiti();
+    document.title = "Preferiti · closetune";
+    window.scrollTo(0, 0);
+  } else if (crea) {
     vistaCrea();
     document.title = "Crea outfit · closetune";
     window.scrollTo(0, 0);
@@ -376,7 +394,7 @@ document.addEventListener("keydown", (e) => {
 
 $("#cerca").addEventListener("input", (e) => {
   st.f.testo = e.target.value;
-  if (location.hash.startsWith("#capo/") || location.hash === "#oggi" || location.hash.startsWith("#crea") || location.hash === "#arcobaleno") location.hash = "";
+  if (location.hash.startsWith("#capo/") || location.hash === "#oggi" || location.hash.startsWith("#crea") || location.hash === "#arcobaleno" || location.hash === "#preferiti") location.hash = "";
   else aggiornaArmadio();
 });
 
@@ -386,7 +404,7 @@ const giaApprovato = (ids) => st.approvati.some((o) => o.length === ids.length &
 function bottoneApprova(pezzi) {
   const ids = pezzi.map((p) => p.id);
   const fatto = giaApprovato(ids);
-  return `<button type="button" class="btn-approva" data-approva="${esc(ids.join(","))}" aria-pressed="${fatto}"${fatto ? " disabled" : ""}>${fatto ? "Approvato" : "Mi piace, approva"}</button>`;
+  return `<button type="button" class="btn-approva" data-approva="${esc(ids.join(","))}" aria-pressed="${fatto}"${fatto ? " disabled" : ""}>${CUORE}<span>${fatto ? "Nei preferiti" : "Aggiungi ai preferiti"}</span></button>`;
 }
 const pezziApprovati = () => st.approvati.map((o) => o.map((id) => st.capi.find((c) => c.id === id)).filter(Boolean));
 
@@ -398,11 +416,11 @@ async function approva(btn) {
     if (!r.ok) throw new Error(r.status);
     if (!giaApprovato(ids)) st.approvati.push(ids);
     taraSuApprovati(pezziApprovati());
-    btn.textContent = "Approvato";
+    btn.querySelector("span").textContent = "Nei preferiti";
     btn.setAttribute("aria-pressed", "true");
   } catch {
     btn.disabled = false;
-    btn.textContent = "Non salvato: il server è acceso?";
+    btn.querySelector("span").textContent = "Non salvato: il server è acceso?";
   }
 }
 
