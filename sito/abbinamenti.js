@@ -547,6 +547,22 @@ export function alternative(pezzi, slot, pool, approvati = []) {
     .sort((a, b) => b.punteggio - a.punteggio);
 }
 
+/** Cosa cambia mettendo `nuovo` al posto di `attuale`, a parole: colore, luce, formalità, tipo. */
+export function effetto(attuale, nuovo) {
+  const colore = parolaColore(nuovo) === parolaColore(attuale) ? "Stesso colore" : `In ${parolaColore(nuovo)}`;
+  const dL = nuovo.lch.L - attuale.lch.L;
+  const media = (c) => (c.formalita[0] + c.formalita[1]) / 2;
+  const dF = media(nuovo) - media(attuale);
+  const nome = (c) => c.categoria.toLowerCase().split(" ")[0];
+  const luce = dL >= 0.15 ? "più chiaro" : dL <= -0.15 ? "più scuro" : "";
+  return [
+    colore,
+    colore.endsWith(luce.slice(4)) ? "" : luce, // "In denim scuro" dice già "più scuro"
+    dF >= 0.5 ? "più elegante" : dF <= -0.5 ? "più sportivo" : "",
+    nome(nuovo) !== nome(attuale) ? `${nome(nuovo)} invece di ${nome(attuale)}` : "",
+  ].filter(Boolean).join(", ");
+}
+
 // ---------- ordine arcobaleno ----------
 /** Capi sopra (base e strato), attivi e da casa, nell'ordine in cui appenderli:
  * bianchi → panna/beige → caldi (beige, giallo, senape, marrone, rosa) → blu dal chiaro allo scuro → verdi → neri. */

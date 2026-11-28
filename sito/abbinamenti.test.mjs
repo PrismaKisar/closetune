@@ -544,3 +544,17 @@ test("oggi vado a…: la t-shirt casual va in università solo sotto un maglione
   assert.ok(!m.vaPer([t, j], "smart-casual"), "da sola resta casual");
   assert.ok(!m.vaPer([t, f, j], "smart-casual"), "la felpa casual non diventa smart");
 });
+
+test("effetto: cosa cambia con un'alternativa, a parole", () => {
+  const [felpa, maglione, felpaChiara, felpaUguale] = m.prepara([
+    capo("a", "felpa", "#1e2a44", { colore: "blu navy" }),
+    capo("b", "maglione", "#1e2a44", { colore: "blu navy", occasione: ["smart-casual"] }),
+    capo("c", "felpa", "#e8e4da", { colore: "panna" }),
+    capo("d", "felpa", "#1f2b45", { colore: "blu navy" }),
+  ]);
+  assert.equal(m.effetto(felpa, maglione), "Stesso colore, più elegante, maglione invece di felpa");
+  assert.equal(m.effetto(felpa, felpaChiara), "In panna, più chiaro");
+  assert.equal(m.effetto(felpa, felpaUguale), "Stesso colore");
+  const [chiari, scuri] = m.prepara([capo("j", "jeans", "#8fa3b5"), capo("k", "jeans", "#1f2633")]);
+  assert.equal(m.effetto(chiari, scuri), "In denim scuro");
+});
