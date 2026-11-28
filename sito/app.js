@@ -14,6 +14,7 @@ const st = {
   pool: "attivo",
   giro: 0, // "Un altro outfit" / "Precedente" in Oggi
   verso: 1,
+  saltati: [], // riordino: capi che non trovi, per ora
   uscita: localStorage.getItem("closetune-uscita") ?? "casual", // "Oggi vado a…"
 };
 
@@ -250,7 +251,7 @@ function schedaOutfit(o, { i = 0, scelto = o.pezzi[0], fissi = [scelto], oggi = 
     </header>
     ${foto}
     ${sintesi ? `<p class="sintesi">${esc(sintesi.testo)}</p>` : ""}
-    ${metti ? `<button type="button" class="btn primario metti" data-metti-oggi="${esc(pezzi.map((p) => p.id).join(","))}">Lo metto oggi</button>` : ""}
+    ${metti ? `<button type="button" class="btn ${metti === true ? "primario" : metti} metti" data-metti-oggi="${esc(pezzi.map((p) => p.id).join(","))}">Lo metto oggi</button>` : ""}
     ${perche}
   </article>`;
 }
@@ -266,7 +267,7 @@ const contaOutfit = (n) => (n === 1 ? "Una proposta" : `${Math.min(n, PRIMI)} pr
 function altriOutfit() {
   const { outfit: tutti, scelto, mostrati, fissi = [scelto] } = lista;
   const nuovi = tutti.slice(mostrati, mostrati + (mostrati ? PASSO : PRIMI));
-  $("#lista-outfit").insertAdjacentHTML("beforeend", nuovi.map((o, i) => schedaOutfit(o, { i, scelto, fissi, metti: true })).join(""));
+  $("#lista-outfit").insertAdjacentHTML("beforeend", nuovi.map((o, i) => schedaOutfit(o, { i, scelto, fissi, metti: mostrati + i ? "secondario" : "primario" })).join(""));
   lista.mostrati += nuovi.length;
   const restano = tutti.length - lista.mostrati;
   const btn = $("#altri");
@@ -284,7 +285,7 @@ function vistaDettaglio(c) {
     ["Colore", `<span class="colore-info"><i style="--c:${esc(c.hex)}"></i>${esc(c.colore)}${c.hex_stimato ? ' <em>stimato dal nome</em>' : ""}</span>`],
     ["Modello", esc(c.modello)], ["Materiale", esc(c.materiale)],
     ["Stagione", c.stagione.map(cap).join(", ")], ["Occasione", c.occasione.map(cap).join(", ")],
-    ["Stato", cap(c.stato)],
+    ["Stato", cap(c.stato)], ["Codice", esc(c.id)],
   ].filter(([, v]) => v);
   const nomiMancanti = mancanti.map((s) => NOMI_SLOT[s]).join(", ");
 
@@ -292,7 +293,7 @@ function vistaDettaglio(c) {
     <section class="scheda" aria-labelledby="titolo-capo">
       <a class="indietro" href="#armadio">Tutti i capi</a>
       <div class="cornice grande">${visuale(c, true)}</div>
-      <p class="marca">${esc(marca(c) || "Senza marca")} · <span>${esc(c.id)}</span></p>
+      <p class="marca">${esc(marca(c) || "Senza marca")}</p>
       <h1 id="titolo-capo">${esc(cap(c.categoria))}</h1>
       ${c.stato === "attivo" ? `<a class="btn primario componi-capo" href="#crea/${esc(c.id)}">${GRUCCIA}Abbina questo capo</a>` : ""}
       <details class="dettagli-capo"${matchMedia("(max-width: 600px)").matches ? "" : " open"}><summary>Dettagli del capo</summary>
@@ -482,9 +483,12 @@ const appesi = () => JSON.parse(localStorage.getItem(APPESI) || "[]");
 
 // uno alla volta: il prossimo capo da appendere, grande, con un solo bottone
 function guida(capi, fatti) {
-  const i = capi.findIndex((c) => !fatti.includes(c.id));
-  if (i < 0) return `<p class="avviso">Tutti appesi. L'armadio è in ordine.</p>`;
-  const c = capi[i], prima = capi[i - 1], dopo = capi[i + 1];
+  const resta = (c) => !fatti.includes(c.id) && !st.saltati.includes(c.id);
+  const i = capi.findIndex(resta);
+  if (i < 0) return st.saltati.length && capi.some((c) => !fatti.includes(c.id))
+    ? `<div class="vuoto"><p>Mancano solo i capi che hai saltato.</p><button type="button" class="btn primario" data-riprendi-saltati>Riprova i saltati</button></div>`
+    : `<p class="avviso">Tutti appesi. L'armadio è in ordine.</p>`;
+  const c = capi[i], prima = capi[i - 1], dopo = capi.slice(i + 1).find(resta);
   return `<section class="guida" aria-label="Il prossimo da appendere">
     <div class="cornice">${visuale(c)}</div>
     <div class="guida-testo">
@@ -493,7 +497,8 @@ function guida(capi, fatti) {
       ${prima ? `<p>Dopo: ${esc(nomeCapo(prima))}.</p>` : `<p>È il primo a sinistra.</p>`}
       <div class="azioni-look">
         <button type="button" class="btn primario" data-appeso="${esc(c.id)}">Appeso, prossimo</button>
-        ${prima ? `<button type="button" class="btn secondario" data-appeso="${esc(prima.id)}">Torna al precedente</button>` : ""}
+        <button type="button" class="btn secondario" data-salta="${esc(c.id)}">Non lo trovo, salta</button>
+        ${prima ? `<button type="button" class="btn secondario" data-torna="${esc(prima.id)}">Torna al precedente</button>` : ""}
       </div>
       ${dopo ? `<p class="stima">Poi: ${esc(nomeCapo(dopo))}</p>` : ""}
     </div>
@@ -519,14 +524,23 @@ const COMPAGNI = { base: "t-shirt e camicie", mid: "felpe e maglioni", bottom: "
 const miniLook = (o) => `<ul class="mini-look">${[...o.pezzi].sort((a, b) => ORDINE[a.slot] - ORDINE[b.slot]).map((p) => `<li${p.nuovo ? ' class="nuovo"' : ""}>${p.nuovo ? `<span class="cornice">${visuale(p)}</span>` : `<a class="cornice" href="#capo/${esc(p.id)}" title="${esc(nomeCapo(p))}">${visuale(p)}</a>`}</li>`).join("")}</ul>`;
 // un livello, non un numero: la stima è grezza, conta l'ordine
 const STRATI_PROSSIMO = [["", "Tutto"], ["base", "Maglie e camicie"], ["mid", "Felpe e maglioni"], ["bottom", "Pantaloni"], ["shoes", "Scarpe"]];
+// la lista acquisti e i suggerimenti scartati (solo su questo dispositivo)
+const ACQUISTI = "closetune-acquisti", NO_ACQUISTI = "closetune-no-acquisti";
+const leggi = (k) => JSON.parse(localStorage.getItem(k) || "[]");
+const listaAcquisti = () => `<section class="lista-acquisti" aria-label="La tua lista acquisti"><h2>La tua lista</h2><ul>${leggi(ACQUISTI).map((a) =>
+  `<li><i style="--c:${esc(a.hex)}"></i>${esc(a.nome)}<button type="button" class="chip-via" data-acquisto="${esc(a.id)}" aria-label="Togli ${esc(a.nome)} dalla lista">${X}</button></li>`).join("")}</ul></section>`;
 function vistaProssimo() {
   const attivi = filtra(st.capi, { stato: "attivo" });
   const strato = st.strato ?? "";
-  const lista = prossimi(st.capi, { approvati: pezziApprovati(), ...(strato && { strato, quanti: 8 }) });
+  const no = leggi(NO_ACQUISTI), quanti = strato ? 8 : 4;
+  const lista = prossimi(st.capi, { approvati: pezziApprovati(), quanti: quanti + no.length, ...(strato && { strato }) }).filter((x) => !no.includes(x.capo.id)).slice(0, quanti);
+  const salvati = leggi(ACQUISTI).map((a) => a.id);
+  st.listaProssimo = lista;
   main.innerHTML = `<div class="oggi prossimo">
     <a class="indietro" href="#armadio">Tutti i capi</a>
     <div class="oggi-testa"><div><p class="marca">Calcolato sui tuoi ${attivi.length} capi attivi</p><h1>Il prossimo capo</h1>
       <p class="sottotitolo">I posti vuoti del tuo armadio: tipo e colore che sbloccano più outfit nuovi con ciò che hai già, tra i colori che stanno bene alla tua pelle.</p></div></div>
+    ${salvati.length ? listaAcquisti() : ""}
     <div class="seg filtro-strato" role="group" aria-label="Quale strato">${STRATI_PROSSIMO.map(([v, t]) => `<button type="button" data-strato="${v}" aria-pressed="${strato === v}">${t}</button>`).join("")}</div>
     ${lista.length ? `<ol class="prossimi">${lista.map((x, i) => `<li class="proposta">
       <div class="cornice">${visuale(x.capo)}</div>
@@ -541,8 +555,13 @@ function vistaProssimo() {
         </ul>
         ${x.alternative.length ? `<p class="anche">Funziona anche in ${x.alternative.map((a) => `<span><i style="--c:${esc(a.capo.hex)}"></i>${esc(a.capo.colore)}</span>`).join(" ")}</p>` : ""}
         ${x.esempi.length ? `<p class="per-esempio">Per esempio</p>${x.esempi.map(miniLook).join("")}` : ""}
+        <div class="azioni-acquisto">
+          <button type="button" class="btn secondario" data-acquisto="${esc(x.capo.id)}" aria-pressed="${salvati.includes(x.capo.id)}">${salvati.includes(x.capo.id) ? `${SPUNTA}Nella lista` : "Salva nella lista"}</button>
+          <button type="button" class="link" data-no-acquisto="${esc(x.capo.id)}">Non mi serve</button>
+        </div>
       </div>
     </li>`).join("")}</ol>` : `<p class="avviso">Il tuo armadio copre già bene ogni combinazione: nessun posto vuoto che valga la spesa.</p>`}
+    ${no.length ? `<p class="stima">${no.length === 1 ? "Un suggerimento nascosto" : `${no.length} suggerimenti nascosti`}. <button type="button" class="link" data-mostra-acquisti>Mostrali di nuovo</button></p>` : ""}
     <p class="stima">In ordine di quanti outfit nuovi e ben riusciti il capo sblocca. Stime dai colori delle foto e dalle regole di stile.</p>
   </div>`;
 }
@@ -748,6 +767,19 @@ document.addEventListener("click", (e) => {
   else if (t.dataset.chiudiPicker !== undefined) t.closest("dialog").close();
   else if (t.dataset.approva) approva(t);
   else if (t.dataset.strato !== undefined) { st.strato = t.dataset.strato; main.classList.add("fermo"); vistaProssimo(); $(`[data-strato="${st.strato}"]`).focus(); }
+  else if (t.dataset.acquisto || t.dataset.noAcquisto || t.dataset.mostraAcquisti !== undefined) {
+    const id = t.dataset.acquisto ?? t.dataset.noAcquisto;
+    const x = st.listaProssimo?.find((x) => x.capo.id === id);
+    const lista = leggi(ACQUISTI);
+    if (t.dataset.acquisto) localStorage.setItem(ACQUISTI, JSON.stringify(lista.some((a) => a.id === id) ? lista.filter((a) => a.id !== id) : [...lista, { id, nome: x.nome, hex: x.capo.hex }]));
+    if (t.dataset.noAcquisto) localStorage.setItem(NO_ACQUISTI, JSON.stringify([...leggi(NO_ACQUISTI), id]));
+    if (t.dataset.mostraAcquisti !== undefined) localStorage.removeItem(NO_ACQUISTI);
+    const y = window.scrollY;
+    main.classList.add("fermo");
+    vistaProssimo();
+    window.scrollTo(0, y);
+    ($(`.proposta [data-acquisto="${id}"]`) ?? $(".filtro-strato [aria-pressed=true]"))?.focus({ preventScroll: true });
+  }
   else if (t.dataset.pref !== undefined) { st.filtroPref = t.dataset.pref; main.classList.add("fermo"); vistaPreferiti(); $(`[data-pref="${t.dataset.pref}"]`).focus(); }
   else if (t.dataset.mettiOggi) {
     // dal lookbook dritto in Oggi, già indossato
@@ -756,15 +788,19 @@ document.addEventListener("click", (e) => {
     st.oggiPezzi = ids;
     location.hash = "oggi";
   }
-  else if (t.dataset.appeso || t.id === "ricomincia-appesi") {
-    const id = t.dataset.appeso;
-    const lista = id ? appesi() : [];
-    if (id) toggle(lista, id);
+  else if (t.dataset.appeso || t.dataset.salta || t.dataset.torna || t.dataset.riprendiSaltati !== undefined || t.id === "ricomincia-appesi") {
+    const id = t.dataset.appeso ?? t.dataset.salta ?? t.dataset.torna;
+    // torna: il precedente non è più né appeso né saltato
+    let lista = t.id === "ricomincia-appesi" ? [] : appesi();
+    if (t.dataset.appeso) toggle(lista, id);
+    if (t.dataset.salta) st.saltati.push(id);
+    if (t.dataset.torna) { lista = lista.filter((x) => x !== id); st.saltati = st.saltati.filter((x) => x !== id); }
+    if (t.dataset.riprendiSaltati !== undefined || t.id === "ricomincia-appesi") st.saltati = [];
     localStorage.setItem(APPESI, JSON.stringify(lista));
     const y = window.scrollY;
     vistaArcobaleno();
     window.scrollTo(0, y);
-    $(id ? `.guida .primario, [data-appeso="${id}"]` : ".indietro")?.focus({ preventScroll: true });
+    (id ? $(`.guida .primario, [data-appeso="${id}"]`) : $(".guida .primario, .arcobaleno .vuoto .primario") ?? $(".indietro"))?.focus({ preventScroll: true });
   }
   else if (t.id === "svuota") { history.replaceState(null, "", "#crea"); main.classList.add("fermo"); vistaCrea(); }
   else if (t.dataset.uscita) {
