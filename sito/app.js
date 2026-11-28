@@ -145,6 +145,7 @@ function schedaOutfit(o, i, scelto, inGruppo = i, fissi = [scelto]) {
       <h3>${esc(titolo)}</h3>
       ${o.pelle !== undefined ? `<span class="pelle" data-v="${giudizioPelle(o.pelle)}" title="Con la tua pelle: ${Math.round(o.pelle * 100)} su 100">Pelle <b>${giudizioPelle(o.pelle)}</b></span>` : ""}
       <span class="armonia" title="Armonia ${voto} su 100"><span class="armonia-barra" aria-hidden="true"><i style="width:${voto}%"></i></span><b>${giudizio(o.punteggio)}</b></span>
+      ${st.statico ? "" : bottoneCuore(o.pezzi)}
     </header>
     <div class="outfit-corpo">
       <ul class="pezzi" style="--n:${pezzi.length}">${pezzi.map((p) => `<li><a class="pezzo${fissi.includes(p) ? " attuale" : ""}" href="#capo/${esc(p.id)}"${fissi.includes(p) ? ' aria-current="true"' : ""}>
@@ -157,7 +158,6 @@ function schedaOutfit(o, i, scelto, inGruppo = i, fissi = [scelto]) {
         ${striscia(pezzi)}
         <div class="palette-grafici">${ruota(pezzi, scelto)}${luce(pezzi)}</div>
         <ul class="motivi">${o.perche.map((m) => `<li data-tipo="${esc(m.tipo)}">${esc(m.testo)}</li>`).join("")}</ul>
-        ${st.statico ? "" : bottoneApprova(o.pezzi)}
       </div>
     </div>
   </article>`;
@@ -401,27 +401,29 @@ $("#cerca").addEventListener("input", (e) => {
 // scrive stato: nel file .md del capo (il file resta: lo storico non si perde)
 // ---------- approvare un outfit: finisce in outfit.md e tara il gusto ----------
 const giaApprovato = (ids) => st.approvati.some((o) => o.length === ids.length && ids.every((id) => o.includes(id)));
-function bottoneApprova(pezzi) {
+function bottoneCuore(pezzi) {
   const ids = pezzi.map((p) => p.id);
   const fatto = giaApprovato(ids);
-  return `<button type="button" class="btn-approva" data-approva="${esc(ids.join(","))}" aria-pressed="${fatto}"${fatto ? " disabled" : ""}>${CUORE}<span>${fatto ? "Nei preferiti" : "Aggiungi ai preferiti"}</span></button>`;
+  return `<button type="button" class="cuore" data-approva="${esc(ids.join(","))}" aria-pressed="${fatto}" aria-label="Preferito" title="Preferito">${CUORE}</button>`;
 }
 const pezziApprovati = () => st.approvati.map((o) => o.map((id) => st.capi.find((c) => c.id === id)).filter(Boolean));
 
 async function approva(btn) {
   const ids = btn.dataset.approva.split(",");
+  const togli = btn.getAttribute("aria-pressed") === "true";
   btn.disabled = true;
   try {
-    const r = await fetch("api/outfit", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ids }) });
+    const r = await fetch("api/outfit", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ids, togli }) });
     if (!r.ok) throw new Error(r.status);
-    if (!giaApprovato(ids)) st.approvati.push(ids);
+    st.approvati = st.approvati.filter((o) => !(o.length === ids.length && ids.every((id) => o.includes(id))));
+    if (!togli) st.approvati.push(ids);
     taraSuApprovati(pezziApprovati());
-    btn.querySelector("span").textContent = "Nei preferiti";
-    btn.setAttribute("aria-pressed", "true");
+    btn.setAttribute("aria-pressed", String(!togli));
+    btn.title = "Preferito";
   } catch {
-    btn.disabled = false;
-    btn.querySelector("span").textContent = "Non salvato: il server è acceso?";
+    btn.title = "Non salvato: il server è acceso?";
   }
+  btn.disabled = false;
 }
 
 async function cambiaStato(btn) {

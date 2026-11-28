@@ -116,8 +116,8 @@ def imposta_stato(id_capo, stato, root=DATI):
     return False
 
 
-def approva_outfit(ids, root=DATI):
-    """Aggiunge una riga `- [id, ...]` a outfit.md (approvazione esplicita dal sito).
+def approva_outfit(ids, root=DATI, togli=False):
+    """Aggiunge una riga `- [id, ...]` a outfit.md (approvazione esplicita dal sito), o la toglie con `togli`.
     Ritorna False se un id non esiste; una combinazione già approvata non si ripete."""
     if not ids or len(set(ids)) != len(ids) or not all(re.fullmatch(r"\d{3}", i) for i in ids):
         raise ValueError(ids)
@@ -126,7 +126,11 @@ def approva_outfit(ids, root=DATI):
         return False
     f = root / "outfit.md"
     testo = f.read_text() if f.exists() else "# Outfit approvati\n\n"
-    if any(set(re.findall(r"\d{3}", r)) == set(ids) for r in testo.splitlines() if r.startswith("- [")):
+    stessa = lambda r: r.startswith("- [") and set(re.findall(r"\d{3}", r)) == set(ids)
+    if togli:
+        f.write_text("".join(r for r in testo.splitlines(keepends=True) if not stessa(r)))
+        return True
+    if any(map(stessa, testo.splitlines())):
         return True
     f.write_text(testo.rstrip("\n") + f"\n- [{', '.join(ids)}]\n")
     return True
@@ -164,7 +168,7 @@ class Handler(SimpleHTTPRequestHandler):
         super().do_GET()
 
     def do_POST(self):
-        """POST /api/capi/<id>/stato {"stato": ...}  ·  POST /api/outfit {"ids": ["001", ...]}"""
+        """POST /api/capi/<id>/stato {"stato": ...}  ·  POST /api/outfit {"ids": ["001", ...], "togli": false}"""
         m = re.fullmatch(r"/api/capi/(\w+)/stato", self.path)
         if not m and self.path != "/api/outfit":
             return self.send_error(404)
@@ -175,7 +179,7 @@ class Handler(SimpleHTTPRequestHandler):
             return self.send_error(403)
         try:
             corpo = json.loads(self.rfile.read(int(self.headers.get("Content-Length", 0))))
-            trovato = approva_outfit(corpo["ids"], self.root) if not m else imposta_stato(m.group(1), corpo["stato"], self.root)
+            trovato = approva_outfit(corpo["ids"], self.root, corpo.get("togli") is True) if not m else imposta_stato(m.group(1), corpo["stato"], self.root)
         except (ValueError, KeyError, TypeError):
             return self.send_error(400)
         if not trovato:

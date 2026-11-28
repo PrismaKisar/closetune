@@ -165,6 +165,9 @@ class TestStato(unittest.TestCase):
         righe = [r for r in (self.root / "outfit.md").read_text().splitlines() if r.startswith("- [")]
         self.assertEqual(righe, ["- [042, 043]"])
         self.assertEqual(server.carica(self.root)["outfit"], [["042", "043"]])
+        self.assertTrue(server.approva_outfit(["043", "042"], self.root, togli=True))  # cuore tolto
+        self.assertEqual(server.carica(self.root)["outfit"], [])
+        self.assertIn("# Outfit approvati", (self.root / "outfit.md").read_text())
         self.assertFalse(server.approva_outfit(["042", "999"], self.root))  # id che non esiste
         for errato in ([], ["042", "042"], ["../x"]):
             with self.assertRaises(ValueError):
